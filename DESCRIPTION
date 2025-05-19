@@ -1,0 +1,15 @@
+Package: quartohelp
+Type: Package
+Title: What the Package Does (Title Case)
+Version: 0.1.0
+Authors@R: person(
+    "Tomasz", "Kalinowski",
+    role = c("aut", "cre"),
+    email = "tomasz@posit.co",
+    comment = NULL
+  )
+Description: More about what it does (maybe more than one line).
+    Continuation lines should be indented.
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true

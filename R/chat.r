@@ -100,7 +100,7 @@ CODE HERE
   ui <- bslib::page_fillable(
     style = "display: flex; flex-direction: column; height: 100vh; padding: 0.5rem;",
     shiny::h1(
-      "Ask Quarto Docs",
+      "Quarto Help",
       style = "margin-bottom: 0.5rem; text-align: center;"
     ),
     shinychat::chat_mod_ui(
@@ -117,7 +117,7 @@ CODE HERE
   )
 
   server <- function(input, output, session) {
-    shinychat::chat_mod_server2(
+    chat_mod_server2(
       "chat",
       client,
       initial_stream = initial_stream
@@ -140,14 +140,12 @@ chat_mod_server2 <- function(
   client,
   initial_stream = NULL
 ) {
-  check_ellmer_chat(client)
-
   append_stream_task <- shiny::ExtendedTask$new(
     function(client, ui_id, stream) {
       promises::then(
         promises::promise_resolve(stream),
         function(stream) {
-          chat_append(ui_id, stream)
+          shinychat::chat_append(ui_id, stream)
         }
       )
     }

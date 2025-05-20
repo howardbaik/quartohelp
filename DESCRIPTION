@@ -1,6 +1,6 @@
 Package: quartohelp
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Chat Interface to Quarto Documentation
 Version: 0.1.0
 Authors@R: person(
     "Tomasz", "Kalinowski",
@@ -8,6 +8,10 @@ Authors@R: person(
     email = "tomasz@posit.co",
     comment = NULL
   )
+Description: Launches an interactive chat app that retrieves and summarizes
+    relevant Quarto documentation using both semantic and keyword-based search
+    via an OpenAI-powered assistant. Returns authoritative excerpts, includes links
+    to official resources, and helps users accomplish specific Quarto tasks quickly.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

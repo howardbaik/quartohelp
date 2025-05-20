@@ -11,7 +11,7 @@
 #' @return Invisibly returns the `client` object for further use or inspection.
 #'
 #' @seealso [ellmer::chat_openai], [ragnar::ragnar_retrieve]
-#'
+#' @importFrom rlang .data
 #' @export
 #' @examples
 #' if (interactive() && nzchar(Sys.getenv("OPENAI_API_KEY"))) {
@@ -53,7 +53,7 @@ CODE HERE
   retrieved_ids <- integer()
   rag_retrieve_from_quarto_store <- function(text) {
     chunks <- dplyr::tbl(store) |>
-      dplyr::filter(!id %in% retrieved_ids) |>
+      dplyr::filter(!.data$id %in% retrieved_ids) |>
       ragnar::ragnar_retrieve(text, top_k = 10)
 
     retrieved_ids <<- unique(c(retrieved_ids, chunks$id))
@@ -78,18 +78,24 @@ CODE HERE
 
   if (!is.null(question)) {
     if (nchar(question) < 500) {
-      initial_tool_request <<- ellmer::ContentToolRequest(
+      initial_tool_request <- ellmer::ContentToolRequest(
         id = "init",
         name = "rag_retrieve_from_quarto_store",
         arguments = list(text = question),
         tool = retrieve_tool
       )
-      initial_tool_result <- ellmer:::invoke_tool(initial_tool_request)
+      initial_tool_result <- asNamespace("ellmer")$invoke_tool(
+        initial_tool_request
+      )
       client$add_turn(
         ellmer::Turn("user", contents = list(ellmer::ContentText(question))),
-        ellmer::Turn("assistant", contents = list(initial_tool_request))
+        ellmer::Turn(
+          "assistant",
+          contents = list(initial_tool_request)
+        )
       )
       initial_stream <- client$stream_async(initial_tool_result)
+      initial_tool_result <- initial_tool_request <- NULL
     } else {
       initial_stream <- client$stream_async(question)
     }

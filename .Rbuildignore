@@ -1,2 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^LICENSE\.md$
+^.*chat.Rmd$
+^TODO.*$
+^scripts$
+^_chats$

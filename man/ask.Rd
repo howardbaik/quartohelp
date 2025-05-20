@@ -4,22 +4,36 @@
 \alias{ask}
 \title{Launch an Interactive Quarto Documentation Chat App}
 \usage{
-ask(question = NULL, client = ellmer::chat_openai(model = "gpt-4.1-mini"))
+ask(
+  question = NULL,
+  client = ellmer::chat_openai(model = "gpt-4.1"),
+  interactive = TRUE
+)
 }
 \arguments{
-\item{question}{A character string with the user's question (optional). If not provided, app opens with a blank chat.}
+\item{question}{A character string with the user's question (optional). If
+not provided, app opens with a blank chat.}
 
-\item{client}{An `ellmer::chat_openai` chat client instance. Defaults to a GPT-4.1-mini model.}
+\item{client}{An `ellmer::Chat` object. Defaults to openai 'gpt-4.1'. Note
+that if a different chat provider is used for chat, an `OPENAI_API_KEY`
+must still be set for embedding vector search.}
+
+\item{interactive}{Logical; whether to launch the interactive Shiny app
+(default `TRUE`). If `FALSE`, returns chat response directly if `question`
+is provided, otherwise, the `client` is returned with the retrieval tool
+registered and system prompt set.}
 }
 \value{
 Invisibly returns the `client` object for further use or inspection.
 }
 \description{
-Starts an interactive chat interface for asking questions about Quarto documentation,
-powered by an OpenAI-based assistant and a hybrid search (RAG) retrieval system over an embedded Quarto knowledge store.
+Starts an interactive chat interface for asking questions about Quarto
+documentation, powered by an OpenAI-based assistant and a hybrid search (RAG)
+retrieval system over an embedded Quarto knowledge store.
 }
 \details{
-This app combines semantic and text-based search, returning authoritative excerpts from Quarto documentation.
+This app combines semantic and text-based search, returning authoritative
+excerpts from Quarto documentation.
 }
 \examples{
 if (interactive() && nzchar(Sys.getenv("OPENAI_API_KEY"))) {

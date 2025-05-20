@@ -37,3 +37,5 @@ remotes::install_github("t-kalinowski/quartohelp")
 ## Requirements
 
 -   An OpenAI API key must be set in `Sys.getenv("OPENAI_API_KEY")`.
+-   A typical question costs approximately 1 to 2 cents with the current
+    flagship `gpt-4.1` model.

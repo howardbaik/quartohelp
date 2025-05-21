@@ -55,11 +55,16 @@ ask <- function(
     If the request is ambiguous, search first, then ask a clarifying question.
     If docs are unavailable or search fails, inform the user and do NOT answer the question.
 
+    Always give answers that include a minimal fully self-contained quarto document.
+
     To display quarto code blocks, use oversized markdown fences, like this:
 
     ````` markdown
     PROSE HERE
     ```{r}
+    CODE HERE
+    ```
+    ```{python}
     CODE HERE
     ```
     `````
@@ -77,7 +82,6 @@ ask <- function(
     # Retrieve relevant chunks using hybrid (vector/BM25) search,
     # excluding previously returned IDs in this session.
     chunks <- dplyr::tbl(store) |>
-      dplyr::filter(!.data$id %in% retrieved_ids) |>
       dplyr::filter(!.data$id %in% retrieved_ids) |>
       ragnar::ragnar_retrieve(text, top_k = 10)
     retrieved_ids <<- unique(c(retrieved_ids, chunks$id))

@@ -72,10 +72,7 @@ ask <- function(
   ))
 
   # Connect to the Quarto knowledge store
-  store <- ragnar::ragnar_store_connect(
-    system.file("quarto.ragnar.store", package = "quartohelp"),
-    read_only = TRUE
-  )
+  store <- quarto_ragnar_store()
 
   retrieved_ids <- integer()
   rag_retrieve_quarto_excerpts <- function(text) {

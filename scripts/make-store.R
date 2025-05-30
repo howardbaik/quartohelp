@@ -6,6 +6,10 @@ library(dotty)
 library(purrr)
 library(dplyr)
 
+pandoc::pandoc_install("3.4")
+message(paste0("Pandoc from: ", pandoc::pandoc_bin("3.4")))
+message(paste0("Pandoc version: ", pandoc::pandoc_version("3.4")))
+
 if (!dir.exists("~/github/quarto-dev/quarto-web")) {
   fs::dir_create("~/github/quarto-dev")
   withr::with_dir("~/github/quarto-dev", {
@@ -19,7 +23,6 @@ if (!dir.exists("~/github/quarto-dev/quarto-web/_site/")) {
     system("quarto render")
   })
 }
-
 
 sitemap <- xml2::read_xml("~/github/quarto-dev/quarto-web/_site/sitemap.xml") |>
   xml2::as_list() |>
@@ -40,8 +43,7 @@ sitemap <- xml2::read_xml("~/github/quarto-dev/quarto-web/_site/sitemap.xml") |>
 # sanity check
 stopifnot(file.exists(sitemap$path))
 
-
-store_location <- "inst/quarto.ragnar.store"
+store_location <- "quarto.ragnar.store"
 
 store <- ragnar_store_create(
   store_location,
@@ -62,7 +64,8 @@ for (r in seq_len(nrow(sitemap))) {
       file = path,
       output = fs::path_ext_set(path, ".md"),
       from = "html",
-      to = "markdown"
+      to = "markdown",
+      version = "3.4"
     )
   })
 
@@ -96,3 +99,4 @@ for (r in seq_len(nrow(sitemap))) {
 }
 
 ragnar_store_build_index(store)
+

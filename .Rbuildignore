@@ -5,3 +5,4 @@
 ^TODO.*$
 ^scripts$
 ^_chats$
+^\.github$

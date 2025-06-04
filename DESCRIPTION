@@ -19,7 +19,7 @@ RoxygenNote: 7.3.2
 Depends:
     R (>= 4.3.0)
 Imports:
-    ragnar (>= 0.0.0.9000),
+    ragnar (>= 0.1.0.9000),
     shiny,
     shinychat,
     ellmer,

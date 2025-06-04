@@ -5,22 +5,20 @@ on:
 
 name: Create Store
 
-permissions: 
+permissions:
   contents: write
 
 jobs:
   store:
     runs-on: ubuntu-latest
     name: Create Store
-    
+
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: r-lib/actions/setup-pandoc@v2
 
       - uses: r-lib/actions/setup-r@v2
         with:
@@ -41,13 +39,13 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           Rscript scripts/make-store.R
-      
+
       - name: Upload store db
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           COMMIT_HASH=$(git -C ~/github/quarto-dev/quarto-web rev-parse --short HEAD)
-          echo "${COMMIT_HASH}" > LATEST 
+          echo "${COMMIT_HASH}" > LATEST
           mv quarto.ragnar.store "quarto.ragnar.store-${COMMIT_HASH}"
           gh release upload store "quarto.ragnar.store-${COMMIT_HASH}" LATEST --clobber
 

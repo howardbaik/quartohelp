@@ -6,14 +6,10 @@ library(dotty)
 library(purrr)
 library(dplyr)
 
-pandoc::pandoc_install("3.4")
-message(paste0("Pandoc from: ", pandoc::pandoc_bin("3.4")))
-message(paste0("Pandoc version: ", pandoc::pandoc_version("3.4")))
-
 if (!dir.exists("~/github/quarto-dev/quarto-web")) {
   fs::dir_create("~/github/quarto-dev")
   withr::with_dir("~/github/quarto-dev", {
-    system("git clone https://github.com/quarto-dev/quarto-web")
+    system("git clone https://github.com/quarto-dev/quarto-web --depth 1")
   })
 }
 
@@ -49,32 +45,16 @@ store <- ragnar_store_create(
   store_location,
   name = "quarto_docs",
   embed = \(x) ragnar::embed_openai(x, model = "text-embedding-3-small"),
-  # embed = \(x) ragnar::embed_ollama(x, model = "snowflake-arctic-embed2:latest"),
   overwrite = TRUE
 )
+
 
 for (r in seq_len(nrow(sitemap))) {
   .[path = path, url = url, ..] <- sitemap[r, ]
   # break
   message(sprintf("[%i/%i] ingesting: %s", r, nrow(sitemap), url))
 
-  withr::with_dir(dirname(path), {
-    output <- pandoc::pandoc_convert(
-      # text = readLines(path),
-      file = path,
-      output = fs::path_ext_set(path, ".md"),
-      from = "html",
-      to = "markdown",
-      version = "3.4"
-    )
-  })
-
-  text <- readLines(output) |> paste0(collapse = "\n")
-  text <- str_replace_all(
-    text,
-    '(src="data:image/.*;base64,)[^"]+"',
-    "\\1--removed--"
-  )
+  text <- read_as_markdown(path)
   hash <- rlang::hash(text)
   frame <- markdown_frame(text, c("h1", "h2", "h3"))
 
@@ -100,3 +80,4 @@ for (r in seq_len(nrow(sitemap))) {
 
 ragnar_store_build_index(store)
 
+DBI::dbDisconnect(store@.con)

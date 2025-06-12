@@ -1,35 +1,30 @@
-Package: quartohelp
 Type: Package
+Package: quartohelp
 Title: Chat Interface to Quarto Documentation
 Version: 0.1.0
-Authors@R: person(
-    "Tomasz", "Kalinowski",
-    role = c("aut", "cre"),
-    email = "tomasz@posit.co",
-    comment = NULL
-  )
-Description: Launches an interactive chat app that retrieves and summarizes
-    relevant Quarto documentation using both semantic and keyword-based search
-    via an OpenAI-powered assistant. Returns authoritative excerpts, includes links
-    to official resources, and helps users accomplish specific Quarto tasks quickly.
+Authors@R: 
+    person("Tomasz", "Kalinowski", , "tomasz@posit.co", role = c("aut", "cre"))
+Description: Launches an interactive chat app that retrieves and
+    summarizes relevant Quarto documentation using both semantic and
+    keyword-based search via an OpenAI-powered assistant. Returns
+    authoritative excerpts, includes links to official resources, and
+    helps users accomplish specific Quarto tasks quickly.
 License: MIT + file LICENSE
-Encoding: UTF-8
-LazyData: true
-RoxygenNote: 7.3.2
 Depends:
     R (>= 4.3.0)
 Imports:
-    ragnar (>= 0.1.0.9000),
-    shiny,
-    shinychat,
-    ellmer,
-    promises,
     bslib,
     dplyr,
+    ellmer,
+    promises,
+    ragnar (>= 0.1.0.9000),
     rlang,
+    shiny,
+    shinychat,
     stringi
 Remotes:
     tidyverse/ragnar
+Encoding: UTF-8
+LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-

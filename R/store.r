@@ -41,7 +41,7 @@ quarto_store_url <- function() {
   if (nzchar(url)) {
     return(url)
   }
-  release <- Sys.getenv("QUARTOHELP_STORE_RELEASE", "store")
+  release <- Sys.getenv("QUARTOHELP_STORE_RELEASE", "store-v2")
   repository <- Sys.getenv("QUARTOHELP_STORE_REPOSITORY", "t-kalinowski/quartohelp")
   commit_hash <- readLines(
     sprintf("https://github.com/%s/releases/download/%s/LATEST", repository, release),

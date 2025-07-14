@@ -5,6 +5,7 @@ library(stringr)
 library(dotty)
 library(purrr)
 library(dplyr)
+library(quartohelp)
 
 if (!dir.exists("~/github/quarto-dev/quarto-web")) {
   fs::dir_create("~/github/quarto-dev")
@@ -51,33 +52,23 @@ store <- ragnar_store_create(
 
 for (r in seq_len(nrow(sitemap))) {
   .[path = path, url = url, ..] <- sitemap[r, ]
-  # break
   message(sprintf("[%i/%i] ingesting: %s", r, nrow(sitemap), url))
 
-  text <- read_as_markdown(path)
-  hash <- rlang::hash(text)
-  frame <- markdown_frame(text, c("h1", "h2", "h3"))
-
-  chunks <- frame |>
-    mutate(hash = hash, origin = url) |>
-    ragnar_chunk(boundaries = c("paragraph", "sentence", "line_break")) |>
-    tidyr::drop_na(text) |>
-    rowwise() |>
-    dplyr::mutate(
-      text = glue::glue(
-        r"---(
-        > excerpt from: {origin}
-        {str_c("> ", na.omit(c(h1, h2, h3)), collapse = "\n")}
-        ---
-        {text}
-        )---"
-      )
-    ) |>
-    dplyr::ungroup()
+  doc <- read_as_markdown(path)
+  doc@origin <- url
+  chunks <- markdown_chunk(doc)
 
   ragnar_store_insert(store, chunks)
 }
 
 ragnar_store_build_index(store)
 
-DBI::dbDisconnect(store@.con)
+DBI::dbDisconnect(store@con)
+
+if (require("quartohelp")) {
+  fs::file_copy(
+    store_location,
+    quartohelp:::quarto_store_path(),
+    overwrite = TRUE
+  )
+}

@@ -101,12 +101,11 @@ quartohelp_chat_server <- function(
   close_action = c("stop", "clear"),
   ...
 ) {
-  store <- quarto_ragnar_store()
   close_action <- match.arg(close_action)
   force(client)
+  force(store)
 
   function(input, output, session) {
-
     if (!inherits(client, "Chat")) {
       # client can be a function returning a ellmer Chat.
       # This is used for apps that need one client per session
@@ -137,7 +136,7 @@ quartohelp_chat_server <- function(
         shiny::stopApp()
       } else if (close_action == "clear") {
         # Do not allow clearing while task is executing.
-        while(complete_task$status() == "running") {
+        while (complete_task$status() == "running") {
           Sys.sleep(0.5)
         }
 
@@ -163,20 +162,19 @@ quartohelp_complete <- function(client, store, question, async = TRUE) {
   # also don't do it for follow up questions
   if (nchar(question) < 500 && length(client$get_turns()) < 2) {
     # temporary chat for making the tool call.
-    chat <- ellmer::chat_openai("gpt-4.1-nano") |>
-      quartohelp_setup_client(store)
+    chat <- ellmer::chat_openai(model = "gpt-4.1-nano")
 
+    # TODO: use a json schema to bound the number of queries in the response?
     queries <- chat$chat_structured(
       echo = FALSE,
       type = ellmer::type_array(
-        "queries",
-        items = ellmer::type_string("a query. escaped if needed")
+        "search queries",
+        items = ellmer::type_string()
       ),
       glue::trim(glue::glue(
         "
-        You are going to search on the Quarto Knowledge store. First generate up to
-        3 search queries related to the question below. You don't always need to
-        generate 3 queries. Be wise.
+        To help answer the question below, generate up to 3 search queries for the Quarto Knowledge Store.
+        You don't always need to generate 3 queries. Be wise.
 
         {question}
         "
@@ -201,10 +199,10 @@ quartohelp_complete <- function(client, store, question, async = TRUE) {
       ellmer::Turn("assistant", contents = tool_requests)
     )
 
-    question <-lapply(tool_requests, function(req) {
+    question <- lapply(tool_requests, function(req) {
       ellmer::ContentToolResult(
         request = req,
-        value = req@tool@fun(req@arguments$text)
+        value = do.call(req@tool, req@arguments)
       )
     })
   } else {
@@ -212,11 +210,8 @@ quartohelp_complete <- function(client, store, question, async = TRUE) {
     question <- list(question)
   }
 
-  if (async) {
-    client$stream_async(!!!question)
-  } else {
-    client$chat(!!!question)
-  }
+  get_answer <- if (async) client$stream_async else client$chat
+  get_answer(!!!question)
 }
 
 
@@ -257,19 +252,15 @@ quartohelp_retrieve_tool <- function(store) {
   rag_retrieve_quarto_excerpts <- function(text) {
     # Retrieve relevant chunks using hybrid (vector/BM25) search,
     # excluding previously returned IDs in this session.
-    chunks <- dplyr::tbl(store) |>
-      dplyr::filter(!.data$id %in% retrieved_ids) |>
-      ragnar::ragnar_retrieve(text, top_k = 10)
-
-    retrieved_ids <<- unique(c(retrieved_ids, chunks$id))
-
-    stringi::stri_c(
-      "<excerpt>",
-      chunks$text,
-      "</excerpt>",
-      sep = "\n",
-      collapse = "\n"
+    chunks <- ragnar::ragnar_retrieve(
+      store,
+      text,
+      top_k = 10,
+      filter = !.data$chunk_id %in% retrieved_ids
     )
+
+    retrieved_ids <<- unique(unlist(c(retrieved_ids, chunks$chunk_id)))
+    chunks
   }
 
   ellmer::tool(
@@ -283,6 +274,6 @@ quartohelp_retrieve_tool <- function(store) {
       - returns the results as plain text wrapped in <excerpt> tags.
       "
     ),
-    text = ellmer::type_string()
+    arguments = list(text = ellmer::type_string())
   )
 }

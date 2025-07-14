@@ -2,7 +2,7 @@ Type: Package
 Package: quartohelp
 Title: Chat Interface to Quarto Documentation
 Version: 0.1.0
-Authors@R: 
+Authors@R:
     person("Tomasz", "Kalinowski", , "tomasz@posit.co", role = c("aut", "cre"))
 Description: Launches an interactive chat app that retrieves and
     summarizes relevant Quarto documentation using both semantic and
@@ -15,14 +15,16 @@ Depends:
 Imports:
     bslib,
     dplyr,
-    ellmer,
+    ellmer (>= 0.2.1.9000),
     promises,
-    ragnar (>= 0.1.0.9000),
+    ragnar (>= 0.2.0),
     rlang,
     shiny,
-    shinychat,
+    shinychat (>= 0.2.0.9000),
     stringi
 Remotes:
+    posit-dev/shinychat/pkg-r,
+    tidyverse/ellmer,
     tidyverse/ragnar
 Encoding: UTF-8
 LazyData: true

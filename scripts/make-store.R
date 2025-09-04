@@ -26,9 +26,9 @@ if (!dir.exists("~/github/quarto-dev/quarto-web/_site/")) {
 urls <- ragnar_find_links("~/github/quarto-dev/quarto-web/_site/sitemap.xml")
 local_paths <- str_replace(
   urls,
-      "^https://quarto.org/",
-      path.expand("~/github/quarto-dev/quarto-web/_site/")
-  )
+  "^https://quarto.org/",
+  path.expand("~/github/quarto-dev/quarto-web/_site/")
+)
 
 sitemap <- tibble(urls, local_paths) |> rename_with(\(nms) sub("s$", "", nms))
 
@@ -63,9 +63,7 @@ ragnar_store_build_index(store)
 DBI::dbDisconnect(store@con)
 
 if (require("quartohelp")) {
-  fs::file_copy(
-    store_location,
-    quartohelp:::quarto_store_path(),
-    overwrite = TRUE
-  )
+  dest <- quartohelp:::quartohelp_store_path()
+  fs::dir_create(dirname(dest))
+  fs::file_copy(store_location, dest, overwrite = TRUE)
 }

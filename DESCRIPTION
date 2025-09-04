@@ -14,14 +14,17 @@ Depends:
     R (>= 4.3.0)
 Imports:
     bslib,
+    dotty,
     dplyr,
     ellmer (>= 0.2.1.9000),
+    fs,
     promises,
     ragnar (>= 0.2.0),
-    rlang,
+    rlang (>= 1.1.0),
     shiny,
     shinychat (>= 0.2.0.9000),
-    stringi
+    stringi,
+    withr
 Remotes:
     posit-dev/shinychat/pkg-r,
     tidyverse/ellmer,

@@ -58,7 +58,8 @@ quartohelp_store_url <- function() {
     n = 1L
   )
   sprintf(
-    "https://github.com/t-kalinowski/quartohelp/releases/download/store/quarto.ragnar.store-%s",
+    "https://github.com/t-kalinowski/quartohelp/releases/download/%s/quarto.ragnar.store-%s",
+    release,
     commit_hash
   )
 }

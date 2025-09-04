@@ -21,40 +21,37 @@ if (!dir.exists("~/github/quarto-dev/quarto-web/_site/")) {
   })
 }
 
-sitemap <- xml2::read_xml("~/github/quarto-dev/quarto-web/_site/sitemap.xml") |>
-  xml2::as_list() |>
-  _$urlset |>
-  lapply(\(u) vctrs::new_data_frame(unlist(u, recursive = FALSE))) |>
-  purrr::list_rbind() |>
-  dplyr::mutate(
-    url = loc,
-    lastmod = anytime::anytime(lastmod),
-    path = str_replace(
-      url,
+# debugonce(ragnar_find_links)
+
+urls <- ragnar_find_links("~/github/quarto-dev/quarto-web/_site/sitemap.xml")
+local_paths <- str_replace(
+  urls,
       "^https://quarto.org/",
       path.expand("~/github/quarto-dev/quarto-web/_site/")
-    ),
-    .keep = "none"
   )
 
+sitemap <- tibble(urls, local_paths) |> rename_with(\(nms) sub("s$", "", nms))
+
+
 # sanity check
-stopifnot(file.exists(sitemap$path))
+stopifnot(file.exists(sitemap$local_path))
 
 store_location <- "quarto.ragnar.store"
 
 store <- ragnar_store_create(
   store_location,
   name = "quarto_docs",
+  title = "Search Quarto Docs",
   embed = \(x) ragnar::embed_openai(x, model = "text-embedding-3-small"),
   overwrite = TRUE
 )
 
 
 for (r in seq_len(nrow(sitemap))) {
-  .[path = path, url = url, ..] <- sitemap[r, ]
-  message(sprintf("[%i/%i] ingesting: %s", r, nrow(sitemap), url))
+  .[local_path = local_path, url = url, ..] <- sitemap[r, ]
+  message(sprintf("[% 3i/%i] ingesting: %s", r, nrow(sitemap), url))
 
-  doc <- read_as_markdown(path)
+  doc <- read_as_markdown(local_path)
   doc@origin <- url
   chunks <- markdown_chunk(doc)
 

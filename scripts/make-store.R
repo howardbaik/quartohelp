@@ -5,7 +5,6 @@ library(stringr)
 library(dotty)
 library(purrr)
 library(dplyr)
-library(quartohelp)
 
 if (!dir.exists("~/github/quarto-dev/quarto-web")) {
   fs::dir_create("~/github/quarto-dev")

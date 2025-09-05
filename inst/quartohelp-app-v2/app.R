@@ -283,7 +283,7 @@ app_ui <- function() {
             card_header(
               div(
                 class = "d-flex align-items-center justify-content-between gap-3",
-                tags$span("Preview"),
+                tags$span("Docs"),
                 div(
                   class = "d-flex align-items-center gap-3",
                   # Toggle: open links in preview vs external tab
@@ -301,12 +301,14 @@ app_ui <- function() {
                       "Open links here"
                     )
                   ),
-                  # Button: open current preview in a new tab
+                  # Icon button: pop out to new tab
                   tags$button(
                     id = "open-preview-external",
                     type = "button",
                     class = "btn btn-sm btn-outline-secondary",
-                    "Open preview in new tab"
+                    title = "Open in new tab",
+                    `aria-label` = "Open in new tab",
+                    icon("external-link-alt")
                   )
                 )
               )
@@ -317,13 +319,13 @@ app_ui <- function() {
                 class = "iframe-wrap",
                 p(
                   id = "iframe-placeholder",
-                  "Click a link in chat to preview here."
+                  "Loading documentation..."
                 ),
                 tags$iframe(
                   id = "content-iframe",
                   name = "content-iframe",
-                  src = "about:blank",
-                  style = "width:100%; height:100%; border:0; display:none;"
+                  src = "https://quarto.org",
+                  style = "width:100%; height:100%; border:0;"
                 )
               )
             )

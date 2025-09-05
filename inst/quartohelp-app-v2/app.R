@@ -364,45 +364,18 @@ app_ui <- function() {
           if (url) openInNewTab(url);
         }, true);
 
-        // Simplified handlers: no link normalization
-
-        // Simplified: no separate handler function
-
-        // Simplified: rely on single document-level delegated click handler
-
-        // Fallback: also listen on document in capture mode
-        function findAnchor(ev){
-          var path = (typeof ev.composedPath === 'function') ? ev.composedPath() : null;
-          var a = null;
-          if (path && path.length){ for (var i=0;i<path.length;i++){ var el = path[i]; if (el && el.tagName === 'A') { a = el; break; } } }
-          if (!a) { a = ev.target && ev.target.closest ? ev.target.closest('a') : null; }
-          if (!a) return null;
-          // Only anchors inside our chat pane
-          var inPane = false;
-          if (path && path.length){ for (var j=0;j<path.length;j++){ var el2 = path[j]; if (el2 && el2.id === 'chat-pane') { inPane = true; break; } } }
-          if (!inPane && !(a.closest && a.closest('#chat-pane'))) return null;
-          return a;
-        }
-
-        // On mousedown, neutralize href/target early to prevent native nav
-        document.addEventListener('mousedown', function(ev){
-          var a = findAnchor(ev); if (!a) return;
-          var href = a.getAttribute('href'); if (!href) return;
-          if (!/^https?:\/\//i.test(href)) return;
-          a.setAttribute('data-orig-href', href);
-          a.setAttribute('href', '#');
-          a.removeAttribute('target');
-        }, true);
-
-        // On click, route to iframe or new tab
+        // Handle clicks on links inside the chat and route them
         document.addEventListener('click', function(ev){
-          var a = findAnchor(ev); if (!a) return;
-          var href = a.getAttribute('data-orig-href') || a.getAttribute('href'); if (!href) return;
+          var a = ev.target && ev.target.closest ? ev.target.closest('#chat a, #chat-pane a') : null;
+          if (!a) return;
+          var href = a.getAttribute('href');
+          if (!href) return;
           if (!/^https?:\/\//i.test(href)) return;
-          ev.preventDefault(); ev.stopPropagation(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+          ev.preventDefault();
           if (window.APP_OPEN_IN_PANE) {
             ensureIframeShown();
-            var iframe = document.getElementById('content-iframe'); if (iframe) iframe.src = href;
+            var iframe = document.getElementById('content-iframe');
+            if (iframe) iframe.src = href;
           } else {
             try { window.open(href, '_blank', 'noopener'); } catch(e) {}
           }

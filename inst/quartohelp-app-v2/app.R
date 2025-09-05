@@ -269,7 +269,10 @@ app_ui <- function() {
           card(
             card_header("Chat"),
             card_body(
-              shinychat::chat_ui("chat", height = "100%")
+              div(
+                id = "chat-pane",
+                shinychat::chat_ui("chat", height = "100%")
+              )
             )
           )
         ),
@@ -315,6 +318,12 @@ app_ui <- function() {
                 p(
                   id = "iframe-placeholder",
                   "Click a link in chat to preview here."
+                ),
+                tags$iframe(
+                  id = "content-iframe",
+                  name = "content-iframe",
+                  src = "about:blank",
+                  style = "width:100%; height:100%; border:0; display:none;"
                 )
               )
             )
@@ -322,31 +331,22 @@ app_ui <- function() {
         )
       ),
 
-      # JS: in-chat link hijack -> right pane iframe
+      # JS: simple in-chat link hijack -> right pane iframe
       tags$script(HTML(
         r"---(
-        // Global preference: open in right pane (true) or new tab (false)
+        // Preference: open in right pane (true) or new tab (false)
         window.APP_OPEN_IN_PANE = true;
 
-        function updateIframe(url) {
-          var ph = document.getElementById('iframe-placeholder');
-          if (ph) ph.style.display = 'none';
-          var cont = document.getElementById('iframe-container');
-          if (!cont) return;
+        function ensureIframeShown(){
           var iframe = document.getElementById('content-iframe');
-          if (!iframe) {
-            iframe = document.createElement('iframe');
-            iframe.id = 'content-iframe';
-            cont.appendChild(iframe);
-          }
-          iframe.src = url;
+          if (!iframe) return;
+          try { iframe.removeEventListener('load', iframe._onload || function(){}); } catch(e) {}
+          iframe._onload = function(){ var ph = document.getElementById('iframe-placeholder'); if (ph) ph.style.display = 'none'; iframe.style.display = 'block'; };
+          iframe.addEventListener('load', iframe._onload);
         }
+        ensureIframeShown();
 
-        function openInNewTab(url) {
-          try {
-            window.open(url, '_blank', 'noopener');
-          } catch (e) {}
-        }
+        function openInNewTab(url) { try { window.open(url, '_blank', 'noopener'); } catch (e) {} }
 
         // Toggle: update preference from the header switch
         document.addEventListener('change', function(ev){
@@ -364,22 +364,47 @@ app_ui <- function() {
           if (url) openInNewTab(url);
         }, true);
 
-        // Delegate clicks from anchors inside the chat container
-        document.addEventListener('click', function(ev){
-          var a = ev.target.closest('a');
-          if (!a) return;
-          // Only handle links within the chat container
-          if (!a.closest('#chat')) return;
-          var href = a.getAttribute('href');
-          if (!href) return;
-          // Ignore non-http(s)
+        // Simplified handlers: no link normalization
+
+        // Simplified: no separate handler function
+
+        // Simplified: rely on single document-level delegated click handler
+
+        // Fallback: also listen on document in capture mode
+        function findAnchor(ev){
+          var path = (typeof ev.composedPath === 'function') ? ev.composedPath() : null;
+          var a = null;
+          if (path && path.length){ for (var i=0;i<path.length;i++){ var el = path[i]; if (el && el.tagName === 'A') { a = el; break; } } }
+          if (!a) { a = ev.target && ev.target.closest ? ev.target.closest('a') : null; }
+          if (!a) return null;
+          // Only anchors inside our chat pane
+          var inPane = false;
+          if (path && path.length){ for (var j=0;j<path.length;j++){ var el2 = path[j]; if (el2 && el2.id === 'chat-pane') { inPane = true; break; } } }
+          if (!inPane && !(a.closest && a.closest('#chat-pane'))) return null;
+          return a;
+        }
+
+        // On mousedown, neutralize href/target early to prevent native nav
+        document.addEventListener('mousedown', function(ev){
+          var a = findAnchor(ev); if (!a) return;
+          var href = a.getAttribute('href'); if (!href) return;
           if (!/^https?:\/\//i.test(href)) return;
-          ev.preventDefault();
-          ev.stopPropagation();
+          a.setAttribute('data-orig-href', href);
+          a.setAttribute('href', '#');
+          a.removeAttribute('target');
+        }, true);
+
+        // On click, route to iframe or new tab
+        document.addEventListener('click', function(ev){
+          var a = findAnchor(ev); if (!a) return;
+          var href = a.getAttribute('data-orig-href') || a.getAttribute('href'); if (!href) return;
+          if (!/^https?:\/\//i.test(href)) return;
+          ev.preventDefault(); ev.stopPropagation(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
           if (window.APP_OPEN_IN_PANE) {
-            updateIframe(href);
+            ensureIframeShown();
+            var iframe = document.getElementById('content-iframe'); if (iframe) iframe.src = href;
           } else {
-            openInNewTab(href);
+            try { window.open(href, '_blank', 'noopener'); } catch(e) {}
           }
           return false;
         }, true);

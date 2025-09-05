@@ -156,14 +156,27 @@ chat_list_ui <- function(id) {
   ns <- NS(id)
   tagList(
     div(
-      class = "btn-toolbar mb-2",
+      class = "chat-sidebar d-flex flex-column h-100",
+      # Top action: New
       div(
-        class = "btn-group btn-group-sm",
-        actionButton(ns("new_chat"), "New", icon = icon("plus")),
-        actionButton(ns("delete_chat"), "Delete", icon = icon("trash"))
+        class = "btn-toolbar mb-2",
+        div(
+          class = "btn-group btn-group-sm",
+          actionButton(ns("new_chat"), "New", icon = icon("plus"), class = "btn-primary")
+        )
+      ),
+      # List takes available space and scrolls
+      div(class = "flex-grow-1 overflow-auto", uiOutput(ns("list"))),
+      # Bottom action: Delete
+      div(
+        class = "btn-toolbar mt-2 position-sticky",
+        style = "bottom:0; background: var(--bs-body-bg); padding-top: .25rem;",
+        div(
+          class = "btn-group btn-group-sm",
+          actionButton(ns("delete_chat"), "Delete", icon = icon("trash"), class = "btn-outline-secondary")
+        )
       )
-    ),
-    uiOutput(ns("list"))
+    )
   )
 }
 
@@ -252,12 +265,23 @@ app_ui <- function() {
       tags$style(HTML(
         "
         html, body, .bslib-page { height: 100%; }
-        .content-split { display: flex; gap: 1rem; height: calc(100vh - 4.5rem); }
-        .left-pane, .right-pane { flex: 1; display: flex; flex-direction: column; }
+        .content-split { display: flex; gap: 0; height: calc(100vh - 4.5rem); position: relative; }
+        .left-pane { flex: 0 0 var(--left-pane-width, 40%); min-width: 240px; max-width: 80%; display: flex; flex-direction: column; }
+        .right-pane { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 20%; }
+        .split-resizer { width: 6px; cursor: col-resize; background: transparent; position: relative; }
+        .split-resizer::after { content: ''; position: absolute; top: 0; bottom: 0; left: 2px; width: 2px; background: var(--bs-border-color, #dee2e6); }
+        .split-reveal { position: absolute; left: 0; top: 0; bottom: 0; width: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5; color: var(--bs-secondary-color, #6c757d); background: transparent; }
+        .split-reveal:hover { color: var(--bs-body-color); }
         .card { display: flex; flex-direction: column; height: 100%; }
         .card-body { flex: 1; overflow: auto; }
         .iframe-wrap { flex: 1; }
         iframe { width: 100%; height: 100%; border: none; }
+        .collapsed-left .left-pane, .collapsed-left .split-resizer { display: none !important; }
+        .collapsed-left .split-reveal { display: flex !important; }
+        .collapsed-left .right-pane { flex: 1 1 auto; }
+        /* During drag, disable iframe pointer events to avoid losing mousemove */
+        .resizing iframe { pointer-events: none !important; }
+        .resizing, .resizing * { cursor: col-resize !important; }
         "
       )),
 
@@ -267,7 +291,20 @@ app_ui <- function() {
         div(
           class = "left-pane",
           card(
-            card_header("Chat"),
+            card_header(
+              div(
+                class = "d-flex align-items-center justify-content-between gap-2",
+                tags$span("Chat"),
+                tags$button(
+                  id = "toggle-chat",
+                  type = "button",
+                  class = "btn btn-sm btn-outline-secondary",
+                  title = "Collapse chat",
+                  `aria-label` = "Collapse chat",
+                  icon("chevron-left")
+                )
+              )
+            ),
             card_body(
               div(
                 id = "chat-pane",
@@ -275,6 +312,12 @@ app_ui <- function() {
               )
             )
           )
+        ),
+        # Draggable divider and collapsed reveal handle
+        div(id = "split-resizer", class = "split-resizer"),
+        div(id = "split-reveal", class = "split-reveal", title = "Show chat", `aria-label` = "Show chat",
+            style = "display:none;",
+            HTML("&#10095;")
         ),
         # Right: embedded browser
         div(
@@ -397,6 +440,58 @@ app_ui <- function() {
           var url = (window.IFR_INDEX >= 0) ? window.IFR_HISTORY[window.IFR_INDEX] : (iframe && iframe.src);
           if (url) openInNewTab(url);
         }, true);
+
+        // Toggle chat collapse/expand
+        document.addEventListener('click', function(ev){
+          var root = document.querySelector('.content-split');
+          if (!root) return;
+          var btn = ev.target.closest('#toggle-chat');
+          if (btn) {
+            root.classList.add('collapsed-left');
+            ev.preventDefault();
+            return false;
+          }
+          var reveal = ev.target.closest('#split-reveal');
+          if (reveal) {
+            root.classList.remove('collapsed-left');
+            ev.preventDefault();
+            return false;
+          }
+        }, true);
+
+        // Draggable resizer logic
+        (function(){
+          var res = document.getElementById('split-resizer');
+          var root = document.querySelector('.content-split');
+          if (!res || !root) return;
+          var dragging = false, startX = 0, startWidth = 0, bbox = null;
+          var save = function(px){ try { localStorage.setItem('qh_split_width_px', String(px)); } catch(e){} };
+          var load = function(){ try { return parseInt(localStorage.getItem('qh_split_width_px')||'',10); } catch(e){ return NaN; } };
+          var apply = function(px){ if (!isFinite(px)) return; root.style.setProperty('--left-pane-width', px + 'px'); };
+          var init = load(); if (isFinite(init) && init > 200) apply(init);
+
+          res.addEventListener('mousedown', function(e){
+            dragging = true; startX = e.clientX; bbox = root.getBoundingClientRect();
+            var left = root.querySelector('.left-pane'); startWidth = left ? left.getBoundingClientRect().width : 0;
+            document.body.style.userSelect = 'none';
+            root.classList.add('resizing');
+            e.preventDefault();
+            e.stopPropagation();
+          }, true);
+          window.addEventListener('mousemove', function(e){
+            if (!dragging) return;
+            var dx = e.clientX - startX; var newPx = Math.max(200, Math.min(bbox.width * 0.8, startWidth + dx));
+            apply(newPx);
+            e.preventDefault();
+          }, true);
+          window.addEventListener('mouseup', function(e){
+            if (!dragging) return; dragging = false;
+            var left = root.querySelector('.left-pane'); var w = left ? left.getBoundingClientRect().width : NaN;
+            if (isFinite(w)) save(Math.round(w));
+            document.body.style.userSelect = '';
+            root.classList.remove('resizing');
+          }, true);
+        })();
 
         // Back/Forward controls
         document.addEventListener('click', function(ev){

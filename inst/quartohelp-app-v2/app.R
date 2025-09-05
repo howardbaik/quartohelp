@@ -283,25 +283,30 @@ app_ui <- function() {
             card_header(
               div(
                 class = "d-flex align-items-center justify-content-between gap-3",
-                tags$span("Docs"),
+                # Left: back/forward + title
+                div(
+                  class = "d-flex align-items-center gap-2",
+                  tags$button(
+                    id = "iframe-back",
+                    type = "button",
+                    class = "btn btn-sm btn-secondary",
+                    title = "Back",
+                    `aria-label` = "Back",
+                    HTML("&#8592;")
+                  ),
+                  tags$button(
+                    id = "iframe-forward",
+                    type = "button",
+                    class = "btn btn-sm btn-secondary",
+                    title = "Forward",
+                    `aria-label` = "Forward",
+                    HTML("&#8594;")
+                  ),
+                  tags$span("Docs")
+                ),
+                # Right: pop out icon
                 div(
                   class = "d-flex align-items-center gap-3",
-                  # Toggle: open links in preview vs external tab
-                  tags$div(
-                    class = "form-check form-switch m-0",
-                    tags$input(
-                      id = "open-in-pane-toggle",
-                      type = "checkbox",
-                      class = "form-check-input",
-                      checked = "checked"
-                    ),
-                    tags$label(
-                      `for` = "open-in-pane-toggle",
-                      class = "form-check-label",
-                      "Open links here"
-                    )
-                  ),
-                  # Icon button: pop out to new tab
                   tags$button(
                     id = "open-preview-external",
                     type = "button",
@@ -336,34 +341,87 @@ app_ui <- function() {
       # JS: simple in-chat link hijack -> right pane iframe
       tags$script(HTML(
         r"---(
-        // Preference: open in right pane (true) or new tab (false)
-        window.APP_OPEN_IN_PANE = true;
+        // Global iframe history (single stack)
+        window.IFR_HISTORY = [];
+        window.IFR_INDEX = -1;
+
+        function updateNavButtons(){
+          var back = document.getElementById('iframe-back');
+          var fwd = document.getElementById('iframe-forward');
+          if (back) back.disabled = !(window.IFR_INDEX > 0);
+          if (fwd) fwd.disabled = !(window.IFR_INDEX >= 0 && window.IFR_INDEX < window.IFR_HISTORY.length - 1);
+        }
+
+        function pushHistory(url){
+          if (!url) return;
+          if (window.IFR_INDEX < window.IFR_HISTORY.length - 1) {
+            window.IFR_HISTORY = window.IFR_HISTORY.slice(0, window.IFR_INDEX + 1);
+          }
+          window.IFR_HISTORY.push(url);
+          window.IFR_INDEX = window.IFR_HISTORY.length - 1;
+          updateNavButtons();
+        }
+
+        function goTo(url, push){
+          var iframe = document.getElementById('content-iframe');
+          if (!iframe || !url) return;
+          if (push) pushHistory(url);
+          iframe.src = url;
+        }
 
         function ensureIframeShown(){
           var iframe = document.getElementById('content-iframe');
           if (!iframe) return;
           try { iframe.removeEventListener('load', iframe._onload || function(){}); } catch(e) {}
-          iframe._onload = function(){ var ph = document.getElementById('iframe-placeholder'); if (ph) ph.style.display = 'none'; iframe.style.display = 'block'; };
+          iframe._onload = function(){
+            var ph = document.getElementById('iframe-placeholder');
+            if (ph) ph.style.display = 'none';
+            iframe.style.display = 'block';
+            // Seed history with initial src on first load
+            if (window.IFR_HISTORY.length === 0 && iframe.src) {
+              pushHistory(iframe.src);
+            }
+            updateNavButtons();
+          };
           iframe.addEventListener('load', iframe._onload);
         }
         ensureIframeShown();
 
         function openInNewTab(url) { try { window.open(url, '_blank', 'noopener'); } catch (e) {} }
 
-        // Toggle: update preference from the header switch
-        document.addEventListener('change', function(ev){
-          var el = ev.target.closest('#open-in-pane-toggle');
-          if (!el) return;
-          window.APP_OPEN_IN_PANE = !!el.checked;
-        }, true);
-
         // Button: open current preview iframe in a new tab
         document.addEventListener('click', function(ev){
           var btn = ev.target.closest('#open-preview-external');
           if (!btn) return;
           var iframe = document.getElementById('content-iframe');
-          var url = iframe && iframe.src;
+          var url = (window.IFR_INDEX >= 0) ? window.IFR_HISTORY[window.IFR_INDEX] : (iframe && iframe.src);
           if (url) openInNewTab(url);
+        }, true);
+
+        // Back/Forward controls
+        document.addEventListener('click', function(ev){
+          var back = ev.target.closest('#iframe-back');
+          if (back) {
+            if (window.IFR_INDEX > 0) {
+              window.IFR_INDEX -= 1;
+              updateNavButtons();
+              var url = window.IFR_HISTORY[window.IFR_INDEX];
+              var iframe = document.getElementById('content-iframe');
+              if (iframe) iframe.src = url;
+            }
+            ev.preventDefault(); return false;
+          }
+          var fwd = ev.target.closest('#iframe-forward');
+          if (fwd) {
+            if (window.IFR_INDEX >= 0 && window.IFR_INDEX < window.IFR_HISTORY.length - 1) {
+              window.IFR_INDEX += 1;
+              updateNavButtons();
+              var url2 = window.IFR_HISTORY[window.IFR_INDEX];
+              var iframe2 = document.getElementById('content-iframe');
+              if (iframe2) iframe2.src = url2;
+            }
+            ev.preventDefault(); return false;
+          }
         }, true);
 
         // Handle clicks on links inside the chat and route them
@@ -373,14 +431,24 @@ app_ui <- function() {
           var href = a.getAttribute('href');
           if (!href) return;
           if (!/^https?:\/\//i.test(href)) return;
+          // Modifier clicks: let user open externally
+          if (ev.ctrlKey || ev.metaKey) return;
           ev.preventDefault();
-          if (window.APP_OPEN_IN_PANE) {
-            ensureIframeShown();
-            var iframe = document.getElementById('content-iframe');
-            if (iframe) iframe.src = href;
-          } else {
-            try { window.open(href, '_blank', 'noopener'); } catch(e) {}
-          }
+          ensureIframeShown();
+          goTo(href, true);
+          return false;
+        }, true);
+
+        // Middle-click (aux) opens externally
+        document.addEventListener('auxclick', function(ev){
+          var a = ev.target && ev.target.closest ? ev.target.closest('#chat a, #chat-pane a') : null;
+          if (!a) return;
+          if (ev.button !== 1) return;
+          var href = a.getAttribute('href');
+          if (!href) return;
+          if (!/^https?:\/\//i.test(href)) return;
+          ev.preventDefault();
+          openInNewTab(href);
           return false;
         }, true);
         )---"

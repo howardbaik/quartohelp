@@ -109,9 +109,26 @@ repair_ragnar_tools <- function(chat) {
 load_chats <- function() {
   files <- list.files(history_dir(), pattern = "\\.rds$", full.names = TRUE)
   if (!length(files)) return(list())
+
+  # Find a captured store location inside tool closures
+  tool_location <- function(chat) {
+    for (tool in chat$get_tools()) {
+      env <- environment(tool)
+      if (!is.null(env$location)) return(env$location)
+    }
+    NULL
+  }
+
   lapply(files, function(f) {
     ent <- readRDS(f)
-    if (!is.null(ent$chat)) repair_ragnar_tools(ent$chat)
+    if (!is.null(ent$chat)) {
+      old_turns <- ent$chat$get_turns()
+      loc <- tool_location(ent$chat) %||% quartohelp_store_path()
+      store <- ragnar::ragnar_store_connect(loc, read_only = TRUE)
+      new_chat <- configure_chat(store = store)
+      if (length(old_turns)) new_chat$set_turns(old_turns)
+      ent$chat <- new_chat
+    }
     ent
   })
 }
@@ -140,16 +157,13 @@ new_chat_entry <- function() {
 }
 
 derive_title <- function(chat_obj) {
-  # Simple, dependency-free title from first user message
   turns <- chat_obj$get_turns()
-  user_msgs <- Filter(function(t) t@role == "user", turns)
-  if (!length(user_msgs)) {
-    return(NULL)
-  }
+  # Avoid direct slot access; use recorded role
+  role_of <- function(t) { rec <- ellmer::contents_record(t); rec$role %||% rec[["role"]] }
+  user_msgs <- Filter(function(t) identical(role_of(t), "user"), turns)
+  if (!length(user_msgs)) return(NULL)
   txt <- ellmer::contents_text(user_msgs[[1]])
-  if (!nzchar(txt)) {
-    return(NULL)
-  }
+  if (!nzchar(txt)) return(NULL)
   words <- strsplit(txt, "\\s+")[[1]]
   paste(utils::head(words, 6), collapse = " ")
 }

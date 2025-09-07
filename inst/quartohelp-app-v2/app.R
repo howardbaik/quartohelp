@@ -552,6 +552,8 @@ app_ui <- function() {
           // Modifier clicks: let user open externally
           if (ev.ctrlKey || ev.metaKey) return;
           ev.preventDefault();
+          ev.stopPropagation();
+          if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
           ensureIframeShown();
           goTo(href, true);
           return false;
@@ -566,6 +568,8 @@ app_ui <- function() {
           if (!href) return;
           if (!/^https?:\/\//i.test(href)) return;
           ev.preventDefault();
+          ev.stopPropagation();
+          if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
           openInNewTab(href);
           return false;
         }, true);

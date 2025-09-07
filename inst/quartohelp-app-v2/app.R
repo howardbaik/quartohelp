@@ -97,17 +97,23 @@ history_dir <- function() {
   dir
 }
 
+# After restoring a Chat from RDS, reconnect any ragnar tool's store
+repair_ragnar_tools <- function(chat) {
+  for (tool in chat$get_tools()) {
+    env <- environment(tool)
+    env$store <- try(ragnar::ragnar_store_connect(env$location))
+  }
+  chat
+}
+
 load_chats <- function() {
   files <- list.files(history_dir(), pattern = "\\.rds$", full.names = TRUE)
-  if (!length(files)) {
-    return(list())
-  }
-  res <- lapply(files, function(f) {
-    # Be defensive in case Chat is not serializable or schema changed
-    tryCatch(readRDS(f), error = function(e) NULL)
+  if (!length(files)) return(list())
+  lapply(files, function(f) {
+    ent <- readRDS(f)
+    if (!is.null(ent$chat)) repair_ragnar_tools(ent$chat)
+    ent
   })
-  # Drop failed loads
-  Filter(Negate(is.null), res)
 }
 
 save_chats <- function(chats) {
@@ -638,7 +644,6 @@ app_server <- function(input, output, session) {
               "Untitled chat"
           }
           chats(chs)
-          save_chats(chs)
         }
         busy(FALSE)
       })

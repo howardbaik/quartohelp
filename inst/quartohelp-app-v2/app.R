@@ -200,17 +200,14 @@ chat_list_server <- function(id, chats, selected, busy) {
         !!!lapply(chs, function(x) {
           classes <- "list-group-item list-group-item-action"
           if (identical(x$id, sel)) {
-            classes <- paste(classes, "active disabled")
+            classes <- paste(classes, "active")
           }
           tags$button(
             id = ns(paste0("chat-", x$id)),
             type = "button",
             class = paste("action-button", classes),
-            style = if (isTRUE(busy())) {
-              "pointer-events:none; opacity:0.7;"
-            } else {
-              NULL
-            },
+            # Keep clickable even when busy; no pointer-events suppression
+            style = NULL,
             x$title %||% "Untitled chat"
           )
         })
@@ -220,7 +217,8 @@ chat_list_server <- function(id, chats, selected, busy) {
     observe({
       lapply(chats(), function(x) {
         observeEvent(input[[paste0("chat-", x$id)]], ignoreInit = TRUE, {
-          if (!isTRUE(busy())) selected(x$id)
+          # Allow navigation even while busy/streaming
+          selected(x$id)
         })
       })
     })
@@ -315,9 +313,14 @@ app_ui <- function() {
         ),
         # Draggable divider and collapsed reveal handle
         div(id = "split-resizer", class = "split-resizer"),
-        div(id = "split-reveal", class = "split-reveal", title = "Show chat", `aria-label` = "Show chat",
-            style = "display:none;",
-            HTML("&#10095;")
+        tags$button(
+          id = "split-reveal",
+          type = "button",
+          class = "btn btn-sm btn-outline-secondary split-reveal",
+          style = "display:none;",
+          title = "Show chat",
+          `aria-label` = "Show chat",
+          icon("chevron-right")
         ),
         # Right: embedded browser
         div(

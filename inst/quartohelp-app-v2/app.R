@@ -288,8 +288,12 @@ app_ui <- function() {
         .right-pane { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 20%; }
         .split-resizer { width: 6px; cursor: col-resize; background: transparent; position: relative; }
         .split-resizer::after { content: ''; position: absolute; top: 0; bottom: 0; left: 2px; width: 2px; background: var(--bs-border-color, #dee2e6); }
-        .split-reveal { position: absolute; left: 0; top: 0; bottom: 0; width: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5; color: var(--bs-secondary-color, #6c757d); background: transparent; }
-        .split-reveal:hover { color: var(--bs-body-color); }
+        /* Collapse history (page sidebar) */
+        #toggle-chat-show { display: none; }
+        .history-collapsed #toggle-chat-show { display: inline-flex; }
+        .history-collapsed .sidebar { display: none !important; }
+        #toggle-chat-show { display: none; }
+        .collapsed-left #toggle-chat-show { display: inline-flex; }
         .card { display: flex; flex-direction: column; height: 100%; }
         .card-body { flex: 1; overflow: auto; }
         .iframe-wrap { flex: 1; }
@@ -331,17 +335,8 @@ app_ui <- function() {
             )
           )
         ),
-        # Draggable divider and collapsed reveal handle
+        # Draggable divider
         div(id = "split-resizer", class = "split-resizer"),
-        tags$button(
-          id = "split-reveal",
-          type = "button",
-          class = "btn btn-sm btn-outline-secondary split-reveal",
-          style = "display:none;",
-          title = "Show chat",
-          `aria-label` = "Show chat",
-          icon("chevron-right")
-        ),
         # Right: embedded browser
         div(
           class = "right-pane",
@@ -349,9 +344,17 @@ app_ui <- function() {
             card_header(
               div(
                 class = "d-flex align-items-center justify-content-between gap-3",
-                # Left: back/forward + title
+                # Left: show chat + back/forward + title
                 div(
                   class = "d-flex align-items-center gap-2",
+                  tags$button(
+                    id = "toggle-chat-show",
+                    type = "button",
+                    class = "btn btn-sm btn-outline-secondary",
+                    title = "Show chat",
+                    `aria-label` = "Show chat",
+                    icon("chevron-right")
+                  ),
                   tags$button(
                     id = "iframe-back",
                     type = "button",
@@ -474,7 +477,7 @@ app_ui <- function() {
             ev.preventDefault();
             return false;
           }
-          var reveal = ev.target.closest('#split-reveal');
+          var reveal = ev.target.closest('#toggle-chat-show');
           if (reveal) {
             root.classList.remove('collapsed-left');
             ev.preventDefault();
@@ -572,6 +575,62 @@ app_ui <- function() {
           if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
           openInNewTab(href);
           return false;
+        }, true);
+
+        // Collapse/expand chat history (page sidebar) with inline style adjustments
+        function findSidebar(){
+          return document.querySelector('[data-bslib-sidebar], .bslib-page .sidebar, .sidebar');
+        }
+        function findMain(container){
+          return (container && container.querySelector('.main, [data-bslib-main]')) || document.querySelector('.main, [data-bslib-main]');
+        }
+        function collapseHistory(){
+          var sb = findSidebar();
+          if (!sb) { document.body.classList.add('history-collapsed'); return; }
+          var container = sb.parentElement;
+          var main = findMain(container);
+          // Save original styles for restore
+          if (!container.dataset.origGtc) container.dataset.origGtc = container.style.gridTemplateColumns || '';
+          if (!sb.dataset.origStyle) sb.dataset.origStyle = sb.getAttribute('style') || '';
+          if (main && !main.dataset.origFlex) {
+            main.dataset.origFlex = main.style.flex || '';
+            main.dataset.origWidth = main.style.width || '';
+          }
+          // Apply collapse styles
+          if (container) container.style.gridTemplateColumns = '0 1fr';
+          sb.style.display = 'none';
+          sb.style.width = '0';
+          sb.style.minWidth = '0';
+          sb.style.maxWidth = '0';
+          if (main) { main.style.flex = '1 1 auto'; main.style.width = '100%'; }
+          document.body.classList.add('history-collapsed');
+        }
+        function expandHistory(){
+          var sb = findSidebar();
+          var container = sb ? sb.parentElement : null;
+          var main = findMain(container);
+          if (container && typeof container.dataset.origGtc !== 'undefined') {
+            container.style.gridTemplateColumns = container.dataset.origGtc;
+          }
+          if (sb && typeof sb.dataset.origStyle !== 'undefined') {
+            sb.setAttribute('style', sb.dataset.origStyle);
+          } else if (sb) {
+            sb.removeAttribute('style');
+          }
+          if (main) {
+            if (typeof main.dataset.origFlex !== 'undefined') main.style.flex = main.dataset.origFlex;
+            if (typeof main.dataset.origWidth !== 'undefined') main.style.width = main.dataset.origWidth;
+          }
+          document.body.classList.remove('history-collapsed');
+        }
+        // Init state
+        if (document.body.classList.contains('history-collapsed')) collapseHistory();
+
+        document.addEventListener('click', function(ev){
+          var btnHide = ev.target.closest('#toggle-chat');
+          if (btnHide) { collapseHistory(); ev.preventDefault(); return false; }
+          var btnShow = ev.target.closest('#toggle-chat-show');
+          if (btnShow) { expandHistory(); ev.preventDefault(); return false; }
         }, true);
         )---"
       ))

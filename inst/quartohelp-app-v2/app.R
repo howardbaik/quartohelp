@@ -311,7 +311,7 @@ app_ui <- function() {
             card_body(
               div(
                 id = "chat-pane",
-                shinychat::chat_ui("chat", height = "100%")
+                shinychat::chat_mod_ui("chat", height = "100%")
               )
             )
           )

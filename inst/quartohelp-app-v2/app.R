@@ -41,46 +41,6 @@ quartohelp_ragnar_store <- function() {
 }
 
 # Configure a fresh Chat object with system prompt + Quarto RAG tool.
-configure_chat <- function(
-  chat = ellmer::chat_openai(
-    model = "gpt-5-nano",
-    params = ellmer::params(reasoning_effort = "low", verbosity = "low"),
-    echo = FALSE
-  ),
-  top_k = 8,
-  store = quartohelp_ragnar_store()
-) {
-  stopifnot(inherits(chat, "Chat"))
-  chat$set_system_prompt(c(
-    chat$get_system_prompt(),
-    glue::trim(
-      "
-      You are an expert in Quarto documentation. You are concise.
-      Always perform a search of the Quarto knowledge store for each user request.
-      Every response must include links to official documentation sources.
-      If the request is ambiguous, search first, then ask a clarifying question.
-      If docs are unavailable, or if search fails, or if docs do not contain an answer
-      to the question, inform the user and do NOT answer the question.
-
-      Always give answers that include a minimal fully self-contained quarto document.
-
-      To display Quarto code blocks, use oversized markdown fences, like this:
-
-      ````` markdown
-      PROSE HERE
-      ```{r}
-      CODE HERE
-      ```
-      ```{python}
-      CODE HERE
-      ```
-      `````
-      "
-    )
-  ))
-
-  ragnar::ragnar_register_tool_retrieve(chat, store, top_k = top_k)
-}
 
 ## ----------------------------------------------------------------------------
 ## Persistence of chats (Chat objects are stateful; we persist whole objects)
@@ -108,7 +68,9 @@ repair_ragnar_tools <- function(chat) {
 
 load_chats <- function() {
   files <- list.files(history_dir(), pattern = "\\.rds$", full.names = TRUE)
-  if (!length(files)) return(list())
+  if (!length(files)) {
+    return(list())
+  }
 
   # Find a captured store location inside tool closures
   tool_location <- function(chat) {
@@ -126,7 +88,9 @@ load_chats <- function() {
       loc <- tool_location(ent$chat) %||% quartohelp_store_path()
       store <- ragnar::ragnar_store_connect(loc, read_only = TRUE)
       new_chat <- configure_chat(store = store)
-      if (length(old_turns)) new_chat$set_turns(old_turns)
+      if (length(old_turns)) {
+        new_chat$set_turns(old_turns)
+      }
       ent$chat <- new_chat
     }
     ent
@@ -159,11 +123,18 @@ new_chat_entry <- function() {
 derive_title <- function(chat_obj) {
   turns <- chat_obj$get_turns()
   # Avoid direct slot access; use recorded role
-  role_of <- function(t) { rec <- ellmer::contents_record(t); rec$role %||% rec[["role"]] }
+  role_of <- function(t) {
+    rec <- ellmer::contents_record(t)
+    rec$role %||% rec[["role"]]
+  }
   user_msgs <- Filter(function(t) identical(role_of(t), "user"), turns)
-  if (!length(user_msgs)) return(NULL)
+  if (!length(user_msgs)) {
+    return(NULL)
+  }
   txt <- ellmer::contents_text(user_msgs[[1]])
-  if (!nzchar(txt)) return(NULL)
+  if (!nzchar(txt)) {
+    return(NULL)
+  }
   words <- strsplit(txt, "\\s+")[[1]]
   paste(utils::head(words, 6), collapse = " ")
 }
@@ -182,7 +153,12 @@ chat_list_ui <- function(id) {
         class = "btn-toolbar mb-2",
         div(
           class = "btn-group btn-group-sm",
-          actionButton(ns("new_chat"), "New", icon = icon("plus"), class = "btn-primary")
+          actionButton(
+            ns("new_chat"),
+            "New",
+            icon = icon("plus"),
+            class = "btn-primary"
+          )
         )
       ),
       # List takes available space and scrolls
@@ -193,7 +169,12 @@ chat_list_ui <- function(id) {
         style = "bottom:0; background: var(--bs-body-bg); padding-top: .25rem;",
         div(
           class = "btn-group btn-group-sm",
-          actionButton(ns("delete_chat"), "Delete", icon = icon("trash"), class = "btn-outline-secondary")
+          actionButton(
+            ns("delete_chat"),
+            "Delete",
+            icon = icon("trash"),
+            class = "btn-outline-secondary"
+          )
         )
       )
     )
@@ -656,12 +637,16 @@ app_server <- function(input, output, session) {
   chat_list_server("chats", chats = chats, selected = selected, busy = busy)
 
   # Initialize selection once chats are available
-  observeEvent(chats(), {
-    chs <- chats()
-    if (is.null(selected()) && length(chs)) {
-      selected(chs[[1]]$id)
-    }
-  }, ignoreInit = FALSE)
+  observeEvent(
+    chats(),
+    {
+      chs <- chats()
+      if (is.null(selected()) && length(chs)) {
+        selected(chs[[1]]$id)
+      }
+    },
+    ignoreInit = FALSE
+  )
 
   # When selection changes, paint that chat's history into UI
   observeEvent(

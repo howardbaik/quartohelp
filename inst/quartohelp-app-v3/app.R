@@ -12,167 +12,7 @@ if (!nzchar(Sys.getenv("OPENAI_API_KEY"))) {
   stop("No OPENAI_API_KEY found in the environment.", call. = FALSE)
 }
 
-## ----------------------------------------------------------------------------
-## Minimal core: configure chat; keep everything in-memory only
-## ----------------------------------------------------------------------------
-
-safe_id <- function(x) {
-  gsub("[^A-Za-z0-9_-]", "-", x)
-}
-
-new_chat_entry <- function() {
-  rid <- paste0("chat_", format(Sys.time(), "%Y-%m-%d_%H-%M-%OS6"))
-  list(
-    id = rid,
-    sid = safe_id(rid),
-    chat = configure_chat(),
-    title = NULL,
-    last_message = Sys.time()
-  )
-}
-
-derive_title <- function(chat_obj) {
-  turns <- chat_obj$get_turns()
-  # Avoid direct slot access; use recorded role
-  role_of <- function(t) {
-    rec <- ellmer::contents_record(t)
-    rec$role %||% rec[["role"]]
-  }
-  user_msgs <- Filter(function(t) identical(role_of(t), "user"), turns)
-  if (!length(user_msgs)) {
-    return(NULL)
-  }
-
-  # Ask a tiny model for a super-short title (<= 3 words)
-  nano <- ellmer::chat_openai(model = "gpt-5-nano")
-  nano$set_turns(turns)
-  out <- tryCatch(
-    nano$chat_structured(
-      type = ellmer::type_string(),
-      glue::trim(
-        "Create a 3-word max title for this conversation. No punctuation."
-      )
-    ),
-    error = function(e) NULL
-  )
-  if (is.null(out) || !nzchar(out)) {
-    # Fallback: first 3 words of first user message
-    txt <- ellmer::contents_text(user_msgs[[1]])
-    words <- strsplit(txt, "\\s+")[[1]]
-    return(paste(utils::head(words, 3), collapse = " "))
-  }
-  # Normalize to <= 3 words
-  words <- strsplit(out, "\\s+")[[1]]
-  paste(utils::head(words, 3), collapse = " ")
-}
-
-## ----------------------------------------------------------------------------
-## Sidebar: chat list module (UI + server)
-## ----------------------------------------------------------------------------
-
-chat_list_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    div(
-      class = "chat-sidebar d-flex flex-column h-100",
-      # Top action: New
-      div(
-        class = "btn-toolbar mb-2",
-        div(
-          class = "btn-group btn-group-sm",
-          actionButton(
-            ns("new_chat"),
-            "New",
-            icon = icon("plus"),
-            class = "btn-primary"
-          )
-        )
-      ),
-      # List takes available space and scrolls
-      div(class = "flex-grow-1 overflow-auto", uiOutput(ns("list"))),
-      # Bottom action: Delete
-      div(
-        class = "btn-toolbar mt-2 position-sticky",
-        style = "bottom:0; background: var(--bs-body-bg); padding-top: .25rem;",
-        div(
-          class = "btn-group btn-group-sm",
-          actionButton(
-            ns("delete_chat"),
-            "Delete",
-            icon = icon("trash"),
-            class = "btn-outline-secondary"
-          )
-        )
-      )
-    )
-  )
-}
-
-chat_list_server <- function(id, chats, selected) {
-  moduleServer(id, function(input, output, session) {
-    ns <- session$ns
-
-    output$list <- renderUI({
-      chs <- chats()
-      # Order by most recent
-      if (length(chs)) {
-        chs <- chs[order(
-          sapply(chs, function(x) x$last_message),
-          decreasing = TRUE
-        )]
-      }
-      sel <- selected() %||% if (length(chs)) chs[[1]]$sid else NULL
-
-      tags$ul(
-        class = "list-group list-group-flush",
-        !!!lapply(chs, function(x) {
-          classes <- "list-group-item list-group-item-action"
-          if (identical(x$sid, sel)) {
-            classes <- paste(classes, "active")
-          }
-          tags$button(
-            id = ns(paste0("chat-", x$sid)),
-            type = "button",
-            class = paste("action-button", classes),
-            # Keep clickable even when busy; no pointer-events suppression
-            style = NULL,
-            x$title %||% "Untitled chat"
-          )
-        })
-      )
-    })
-
-    observe({
-      lapply(chats(), function(x) {
-        observeEvent(input[[paste0("chat-", x$sid)]], ignoreInit = TRUE, {
-          # Allow navigation even while busy/streaming
-          selected(x$sid)
-        })
-      })
-    })
-
-    observeEvent(input$new_chat, {
-      chs <- chats()
-      ch <- new_chat_entry()
-      chats(append(list(ch), chs))
-      selected(ch$sid)
-    })
-
-    observeEvent(input$delete_chat, {
-      chs <- chats()
-      if (!length(chs)) {
-        return()
-      }
-      sel <- selected()
-      chs <- Filter(function(x) x$sid != sel, chs)
-      if (!length(chs)) {
-        chs <- list(new_chat_entry())
-      }
-      selected(chs[[1]]$sid)
-      chats(chs)
-    })
-  })
-}
+## (Simplified) No sidebar or multi-chat helpers
 
 ## ----------------------------------------------------------------------------
 ## UI
@@ -187,9 +27,12 @@ app_ui <- function() {
       tags$style(HTML(
         "
         html, body, .bslib-page { height: 100%; }
-        .content-split { display: flex; gap: 0; height: calc(100vh - 4.5rem); position: relative; }
+        body, .bslib-page { margin: 0; }
+        .bslib-page .main, [data-bslib-main] { padding: 0; }
+        .content-split { display: flex; gap: 0; height: 100vh; position: relative; }
         .left-pane { flex: 0 0 var(--left-pane-width, 40%); min-width: 240px; max-width: 80%; display: flex; flex-direction: column; }
         .right-pane { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 20%; }
+        .left-pane, .right-pane { min-height: 0; }
         .split-resizer { width: 6px; cursor: col-resize; background: transparent; position: relative; }
         .split-resizer::after { content: ''; position: absolute; top: 0; bottom: 0; left: 2px; width: 2px; background: var(--bs-border-color, #dee2e6); }
         /* Collapse left chat pane */

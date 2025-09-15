@@ -9,6 +9,7 @@ library(ellmer)
 library(ragnar)
 library(glue)
 library(promises)
+library(quartohelp)
 
 ## Early check for OpenAI API Key
 if (!nzchar(Sys.getenv("OPENAI_API_KEY"))) {

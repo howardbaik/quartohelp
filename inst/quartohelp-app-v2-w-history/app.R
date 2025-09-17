@@ -17,104 +17,18 @@ if (!nzchar(Sys.getenv("OPENAI_API_KEY"))) {
 }
 
 ## ----------------------------------------------------------------------------
-## Core helpers: store + chat configuration
+## Minimal core: configure chat; keep everything in-memory only
 ## ----------------------------------------------------------------------------
 
-# Minimal copy of the package's store helpers to be self-contained here.
-quartohelp_cache_dir <- function(...) {
-  root <- tools::R_user_dir("quartohelp", "cache")
-  normalizePath(file.path(root, ...), mustWork = FALSE)
-}
-
-quartohelp_store_path <- function() {
-  quartohelp_cache_dir("quarto.ragnar.store")
-}
-
-quartohelp_ragnar_store <- function() {
-  path <- quartohelp_store_path()
-  if (!file.exists(path)) {
-    # Try to use the package-supplied helper if available to populate the store.
-    if ("quartohelp" %in% rownames(installed.packages())) {
-      try(quartohelp::update_store(), silent = TRUE)
-    }
-  }
-  ragnar::ragnar_store_connect(path, read_only = TRUE)
-}
-
-# Configure a fresh Chat object with system prompt + Quarto RAG tool.
-
-## ----------------------------------------------------------------------------
-## Persistence of chats (Chat objects are stateful; we persist whole objects)
-## ----------------------------------------------------------------------------
-
-history_dir <- function() {
-  dir <- file.path(
-    tools::R_user_dir("quartohelp", which = "data"),
-    "history_v2"
-  )
-  if (!dir.exists(dir)) {
-    dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  }
-  dir
-}
-
-# After restoring a Chat from RDS, reconnect any ragnar tool's store
-repair_ragnar_tools <- function(chat) {
-  for (tool in chat$get_tools()) {
-    env <- environment(tool)
-    env$store <- try(ragnar::ragnar_store_connect(env$location))
-  }
-  chat
-}
-
-load_chats <- function() {
-  files <- list.files(history_dir(), pattern = "\\.rds$", full.names = TRUE)
-  if (!length(files)) {
-    return(list())
-  }
-
-  # Find a captured store location inside tool closures
-  tool_location <- function(chat) {
-    for (tool in chat$get_tools()) {
-      env <- environment(tool)
-      if (!is.null(env$location)) return(env$location)
-    }
-    NULL
-  }
-
-  lapply(files, function(f) {
-    ent <- readRDS(f)
-    if (!is.null(ent$chat)) {
-      old_turns <- ent$chat$get_turns()
-      loc <- tool_location(ent$chat) %||% quartohelp_store_path()
-      store <- ragnar::ragnar_store_connect(loc, read_only = TRUE)
-      new_chat <- configure_chat(store = store)
-      if (length(old_turns)) {
-        new_chat$set_turns(old_turns)
-      }
-      ent$chat <- new_chat
-    }
-    ent
-  })
-}
-
-save_chats <- function(chats) {
-  dir <- history_dir()
-  # Replace atomically by clearing and re-writing
-  unlink(list.files(dir, full.names = TRUE, pattern = "\\.rds$"))
-  invisible(lapply(chats, function(ch) {
-    # Persist only if chat exists and has at least one turn
-    if (!is.null(ch$chat) && length(ch$chat$get_turns()) > 0) {
-      saveRDS(ch, file.path(dir, paste0(ch$id, ".rds")))
-    }
-    NULL
-  }))
-  invisible(NULL)
+safe_id <- function(x) {
+  gsub("[^A-Za-z0-9_-]", "-", x)
 }
 
 new_chat_entry <- function() {
+  rid <- paste0("chat_", format(Sys.time(), "%Y-%m-%d_%H-%M-%OS6"))
   list(
-    id = paste0("chat_", format(Sys.time(), "%Y-%m-%d_%H-%M-%OS6")),
+    id = rid,
+    sid = safe_id(rid),
     chat = configure_chat(),
     title = NULL,
     last_message = Sys.time()
@@ -132,12 +46,28 @@ derive_title <- function(chat_obj) {
   if (!length(user_msgs)) {
     return(NULL)
   }
-  txt <- ellmer::contents_text(user_msgs[[1]])
-  if (!nzchar(txt)) {
-    return(NULL)
+
+  # Ask a tiny model for a super-short title (<= 3 words)
+  nano <- ellmer::chat_openai(model = "gpt-5-nano")
+  nano$set_turns(turns)
+  out <- tryCatch(
+    nano$chat_structured(
+      type = ellmer::type_string(),
+      glue::trim(
+        "Create a 3-word max title for this conversation. No punctuation."
+      )
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(out) || !nzchar(out)) {
+    # Fallback: first 3 words of first user message
+    txt <- ellmer::contents_text(user_msgs[[1]])
+    words <- strsplit(txt, "\\s+")[[1]]
+    return(paste(utils::head(words, 3), collapse = " "))
   }
-  words <- strsplit(txt, "\\s+")[[1]]
-  paste(utils::head(words, 6), collapse = " ")
+  # Normalize to <= 3 words
+  words <- strsplit(out, "\\s+")[[1]]
+  paste(utils::head(words, 3), collapse = " ")
 }
 
 ## ----------------------------------------------------------------------------
@@ -182,7 +112,7 @@ chat_list_ui <- function(id) {
   )
 }
 
-chat_list_server <- function(id, chats, selected, busy) {
+chat_list_server <- function(id, chats, selected) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -195,17 +125,17 @@ chat_list_server <- function(id, chats, selected, busy) {
           decreasing = TRUE
         )]
       }
-      sel <- selected() %||% if (length(chs)) chs[[1]]$id else NULL
+      sel <- selected() %||% if (length(chs)) chs[[1]]$sid else NULL
 
       tags$ul(
         class = "list-group list-group-flush",
         !!!lapply(chs, function(x) {
           classes <- "list-group-item list-group-item-action"
-          if (identical(x$id, sel)) {
+          if (identical(x$sid, sel)) {
             classes <- paste(classes, "active")
           }
           tags$button(
-            id = ns(paste0("chat-", x$id)),
+            id = ns(paste0("chat-", x$sid)),
             type = "button",
             class = paste("action-button", classes),
             # Keep clickable even when busy; no pointer-events suppression
@@ -218,9 +148,9 @@ chat_list_server <- function(id, chats, selected, busy) {
 
     observe({
       lapply(chats(), function(x) {
-        observeEvent(input[[paste0("chat-", x$id)]], ignoreInit = TRUE, {
+        observeEvent(input[[paste0("chat-", x$sid)]], ignoreInit = TRUE, {
           # Allow navigation even while busy/streaming
-          selected(x$id)
+          selected(x$sid)
         })
       })
     })
@@ -229,7 +159,7 @@ chat_list_server <- function(id, chats, selected, busy) {
       chs <- chats()
       ch <- new_chat_entry()
       chats(append(list(ch), chs))
-      selected(ch$id)
+      selected(ch$sid)
     })
 
     observeEvent(input$delete_chat, {
@@ -238,11 +168,11 @@ chat_list_server <- function(id, chats, selected, busy) {
         return()
       }
       sel <- selected()
-      chs <- Filter(function(x) x$id != sel, chs)
+      chs <- Filter(function(x) x$sid != sel, chs)
       if (!length(chs)) {
         chs <- list(new_chat_entry())
       }
-      selected(chs[[1]]$id)
+      selected(chs[[1]]$sid)
       chats(chs)
     })
   })
@@ -312,7 +242,10 @@ app_ui <- function() {
             card_body(
               div(
                 id = "chat-pane",
-                shinychat::chat_mod_ui("chat", height = "100%")
+                uiOutput("chat_panels"),
+                tags$script(HTML(
+                  "Shiny.addCustomMessageHandler('qh_setActiveChat', function(x){\n  try {\n    var panels = document.querySelectorAll('[data-chat-panel]');\n    panels.forEach(function(p){\n      p.style.display = (p.getAttribute('data-chat-panel') === x.id) ? '' : 'none';\n    });\n  } catch (e) {}\n});"
+                ))
               )
             )
           )
@@ -626,96 +559,101 @@ app_ui <- function() {
 
 app_server <- function(input, output, session) {
   # State: list of chat entries (id, chat, title, last_message)
-  chats <- reactiveVal({
-    loaded <- load_chats()
-    if (!length(loaded)) list(new_chat_entry()) else loaded
-  })
+  chats <- reactiveVal(list(new_chat_entry()))
   # Do NOT read chats() here; no reactive context yet
   selected <- reactiveVal(NULL)
-  busy <- reactiveVal(FALSE)
+  # Track which chat module IDs have been initialized (store in session userData)
+  if (is.null(session$userData$qh_initialized_ids)) {
+    session$userData$qh_initialized_ids <- character()
+  }
+
+  # Each chat entry manages its own ellmer Chat; no static global client
+
+  # No static chat module; each chat ID initializes its module on demand
 
   # Sidebar module
-  chat_list_server("chats", chats = chats, selected = selected, busy = busy)
+  chat_list_server("chats", chats = chats, selected = selected)
 
-  # Initialize selection once chats are available
+  # Initialize selection once chats exist
   observeEvent(
     chats(),
     {
       chs <- chats()
-      if (is.null(selected()) && length(chs)) {
-        selected(chs[[1]]$id)
-      }
+      if (is.null(selected()) && length(chs)) selected(chs[[1]]$id)
     },
     ignoreInit = FALSE
   )
 
-  # When selection changes, paint that chat's history into UI
+  # Initialize module servers for any new chats and render all panels (hidden except active)
+  observeEvent(
+    chats(),
+    {
+      chs <- chats()
+      ids <- vapply(chs, function(x) x$sid, character(1))
+
+      known <- session$userData$qh_initialized_ids %||% character()
+      new_ids <- setdiff(ids, known)
+      if (length(new_ids)) {
+        for (id in new_ids) {
+          # find chat by id
+          ch <- NULL
+          for (x in chs) {
+            if (identical(x$sid, id)) {
+              ch <- x$chat
+              break
+            }
+          }
+          if (!is.null(ch)) shinychat::chat_mod_server(id, ch)
+        }
+        session$userData$qh_initialized_ids <- c(known, new_ids)
+      }
+
+      # Render all chat panels; show only selected one
+      output$chat_panels <- renderUI({
+        active <- selected() %||% if (length(chs)) chs[[1]]$sid else NULL
+        tagList(lapply(chs, function(x) {
+          style <- if (!is.null(active) && identical(x$sid, active)) "" else "display:none"
+          tags$div(`data-chat-panel` = x$sid, style = style, shinychat::chat_mod_ui(x$sid, height = "100%"))
+        }))
+      })
+    },
+    ignoreInit = FALSE
+  )
+
+  # Switch visible panel on selection without re-rendering
   observeEvent(
     selected(),
     {
-      chs <- chats()
       sel <- selected()
-      current <- NULL
-      for (ch in chs) {
-        if (identical(ch$id, sel)) {
-          current <- ch
-          break
-        }
-      }
-      if (is.null(current)) {
-        return()
-      }
-      shinychat::chat_clear("chat")
-      lapply(current$chat$get_turns(), function(tn) {
-        msg <- list(role = tn@role, content = ellmer::contents_markdown(tn))
-        shinychat::chat_append_message("chat", msg, chunk = FALSE)
-      })
+      if (!is.null(sel)) session$sendCustomMessage('qh_setActiveChat', list(id = sel))
     },
-    ignoreInit = TRUE
+    ignoreInit = FALSE
   )
 
-  # Handle user input -> stream to the selected Chat object
-  observeEvent(input$chat_user_input, {
+  # Auto-title chats (3 words via gpt-5-nano) once they have at least one user turn
+  observe({
     chs <- chats()
-    sel <- selected()
-    current_idx <- NULL
+    # find first chat without title but with turns
+    needs <- NULL
     for (i in seq_along(chs)) {
-      if (identical(chs[[i]]$id, sel)) {
-        current_idx <- i
+      if (is.null(chs[[i]]$title) && length(chs[[i]]$chat$get_turns()) > 0) {
+        needs <- i
         break
       }
     }
-    if (is.null(current_idx)) {
-      return()
+    if (!is.null(needs)) {
+      ttl <- tryCatch(derive_title(chs[[needs]]$chat), error = function(e) NULL)
+      if (nzchar(ttl %||% "")) {
+        chs[[needs]]$title <- ttl
+        chats(chs)
+      }
     }
-
-    cli <- chs[[current_idx]]$chat
-    busy(TRUE)
-    promises::promise_resolve(cli$stream_async(input$chat_user_input)) |>
-      promises::then(function(stream) {
-        shinychat::chat_append("chat", stream)
-      }) |>
-      promises::finally(function(value) {
-        # Update metadata: last_message + maybe title
-        chs <- chats()
-        if (!is.null(current_idx) && current_idx <= length(chs)) {
-          chs[[current_idx]]$last_message <- Sys.time()
-          if (is.null(chs[[current_idx]]$title)) {
-            chs[[current_idx]]$title <- derive_title(
-              chs[[current_idx]]$chat
-            ) %||%
-              "Untitled chat"
-          }
-          chats(chs)
-        }
-        busy(FALSE)
-      })
+    invalidateLater(1500, session)
   })
 
-  # Save on session end
-  session$onSessionEnded(function() {
-    save_chats(isolate(chats()))
-  })
+  # No manual input/stream handling; shinychat owns it per-module
+
+  # No persistence on session end (keep lightweight)
 }
 
 ## ----------------------------------------------------------------------------

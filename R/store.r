@@ -35,7 +35,7 @@ update_store <- function() {
   tmp <- withr::local_tempfile()
   download.file(quartohelp_store_url(), destfile = tmp, mode = "wb")
 
-  file.rename(tmp, path)
+  fs::file_move(tmp, path, overwrite = TRUE)
   invisible(NULL)
 }
 

@@ -1,3 +1,16 @@
+#' Configure the default chat client
+#'
+#' Attaches the Quarto knowledge store retrieval tool and system prompt to a
+#' chat instance. By default this creates a fresh OpenAI chat via
+#' [ellmer::chat_openai()] and registers [ragnar::ragnar_register_tool_retrieve]
+#' so that every response can cite relevant Quarto documentation.
+#'
+#' @param chat An `ellmer::Chat` object to configure.
+#' @param top_k Number of excerpts to request from the knowledge store for each
+#'   retrieval.
+#' @param store A connection returned by `quartohelp_ragnar_store()`.
+#'
+#' @return The configured `chat` object.
 #' @export
 configure_chat <- function(
   chat = ellmer::chat_openai(
@@ -38,4 +51,10 @@ configure_chat <- function(
   ))
 
   ragnar::ragnar_register_tool_retrieve(chat, store, top_k = top_k)
+
+  attr(chat, "quartohelp_factory") <- function() {
+    configure_chat(top_k = top_k, store = store)
+  }
+
+  chat
 }

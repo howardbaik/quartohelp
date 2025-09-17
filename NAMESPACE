@@ -3,4 +3,3 @@
 export(ask)
 export(configure_chat)
 export(update_store)
-importFrom(rlang,.data)

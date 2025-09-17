@@ -2,38 +2,29 @@
 % Please edit documentation in R/chat.r
 \name{ask}
 \alias{ask}
-\title{Launch an Interactive Quarto Documentation Chat App}
+\title{Launch the Quarto Help chat app}
 \usage{
-ask(
-  question = NULL,
-  client = ellmer::chat_openai(model = "gpt-4.1"),
-  interactive = TRUE
-)
+ask(question = NULL, client = configure_chat(), interactive = TRUE)
 }
 \arguments{
-\item{question}{A character string with the user's question (optional). If
-not provided, app opens with a blank chat.}
+\item{question}{Optional character string to send as the first user turn.}
 
-\item{client}{An \code{ellmer::Chat} object. Defaults to openai 'gpt-4.1'. Note
-that if a different chat provider is used for chat, an \code{OPENAI_API_KEY}
-must still be set for embedding vector search.}
+\item{client}{An \code{ellmer::Chat} instance. Defaults to the value returned by
+\code{\link[=configure_chat]{configure_chat()}}.}
 
-\item{interactive}{Logical; whether to launch the interactive Shiny app
-(default \code{TRUE}). If \code{FALSE}, returns chat response directly if \code{question}
-is provided, otherwise, the \code{client} is returned with the retrieval tool
-registered and system prompt set.}
+\item{interactive}{If \code{TRUE} (default) launch the Shiny app. If \code{FALSE},
+the \code{question} (when supplied) is answered immediately and the response is
+returned.}
 }
 \value{
-Invisibly returns the \code{client} object for further use or inspection.
+Invisibly returns the \code{client} object. When \code{interactive = FALSE}
+the chat response is returned directly.
 }
 \description{
-Starts an interactive chat interface for asking questions about Quarto
-documentation, powered by an OpenAI-based assistant and a hybrid search (RAG)
-retrieval system over an embedded Quarto knowledge store.
-}
-\details{
-This app combines semantic and text-based search, returning authoritative
-excerpts from Quarto documentation.
+Starts an interactive chat interface backed by the Quarto knowledge store.
+The app uses \code{\link[shinychat:chat_app]{shinychat::chat_mod_ui()}} and \code{\link[shinychat:chat_app]{shinychat::chat_mod_server()}} to
+wire a single chat instance and an embedded documentation browser. By
+default a fresh chat is created with \code{\link[=configure_chat]{configure_chat()}}.
 }
 \examples{
 if (interactive() && nzchar(Sys.getenv("OPENAI_API_KEY"))) {
@@ -41,5 +32,5 @@ if (interactive() && nzchar(Sys.getenv("OPENAI_API_KEY"))) {
 }
 }
 \seealso{
-\link[ellmer:chat_openai]{ellmer::chat_openai}, \link[ragnar:ragnar_retrieve]{ragnar::ragnar_retrieve}
+\code{\link[=configure_chat]{configure_chat()}}
 }

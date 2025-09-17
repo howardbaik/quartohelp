@@ -3,7 +3,7 @@ quartohelp_cache_dir <- function(...) {
   normalizePath(file.path(root, ...), mustWork = FALSE)
 }
 
-quartohelp_store_path <- function() {
+quartohelp_store_path <- store_path <- function() {
   quartohelp_cache_dir("quarto.ragnar.store")
 }
 

@@ -9,14 +9,6 @@
     window.IFR_INDEX = -1;
     window.shinychat_always_open_external_links = true;
 
-    const qhLog = (...args) => {
-      if (typeof console !== 'undefined' && console.debug) {
-        console.debug('[quartohelp]', ...args);
-      }
-    };
-
-    qhLog('inline script initialised');
-
     const HTTP_RE = /^https?:\/\//i;
 
     function updateNavButtons(){
@@ -83,14 +75,12 @@
       if (!root) return;
       const btn = ev.target.closest('#toggle-chat');
       if (btn) {
-        qhLog('collapse chat click');
         root.classList.add('collapsed-left');
         ev.preventDefault();
         return false;
       }
       const reveal = ev.target.closest('#toggle-chat-show');
       if (reveal) {
-        qhLog('expand chat click');
         root.classList.remove('collapsed-left');
         ev.preventDefault();
         return false;
@@ -135,7 +125,6 @@
           left.style.flex = `0 0 ${clamped}px`;
           left.style.width = `${clamped}px`;
           if (persist) save(Math.round(clamped));
-          qhLog('resizer update', { px: clamped, persist: !!persist });
         };
 
         const onMove = (clientX) => {
@@ -188,7 +177,6 @@
 
       res.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
-        qhLog('drag start (mouse)', { x: e.clientX });
         startDrag(e.clientX);
         e.preventDefault();
         e.stopPropagation();
@@ -196,7 +184,6 @@
 
       res.addEventListener('touchstart', (e) => {
         if (!e.touches || !e.touches.length) return;
-        qhLog('drag start (touch)', { x: e.touches[0].clientX });
         startDrag(e.touches[0].clientX);
         e.preventDefault();
         e.stopPropagation();
@@ -244,7 +231,6 @@
       if (!href) return;
       if (!HTTP_RE.test(href)) return;
       if (ev.ctrlKey || ev.metaKey) return;
-      qhLog('chat link click intercepted', { href });
       ev.preventDefault();
       ev.stopPropagation();
       if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
@@ -318,15 +304,6 @@
     }
     if (document.body && document.body.classList.contains('history-collapsed')) collapseHistory();
     document.addEventListener('click', function(ev){ return true; }, true);
-
-    window.addEventListener('error', (event) => {
-      const target = event?.target;
-      const candidate = (target && (target.src || target.href)) || '';
-      if (typeof candidate === 'string' && candidate.endsWith('.map')) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
-    }, true);
   };
 
   if (document.readyState === 'loading') {

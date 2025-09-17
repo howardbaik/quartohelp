@@ -16,9 +16,9 @@ quartohelp GitHub repository.
 \details{
 The download location can be configured with a few environment variables:
 \itemize{
-\item \code{QUARTOHELP_STORE_URL}: a custom URL to download the store from. The default is to downlaod the latest store
-from the \code{t-kalinowski/quartohelp} repository in the \code{store} release.
-\item \code{QUARTOHELP_STORE_RELEASE}: the release tag to download the store from. Defaults to \code{store}.
+\item \code{QUARTOHELP_STORE_URL}: a custom URL to download the store from. The default is to download the latest store
+from the \code{t-kalinowski/quartohelp} repository in the \code{store-v2} release.
+\item \code{QUARTOHELP_STORE_RELEASE}: the release tag to download the store from. Defaults to \code{store-v2}.
 \item \code{QUARTOHELP_STORE_REPOSITORY}: the repository to download the store from. Defaults to \code{t-kalinowski/quartohelp}.
 }
 }

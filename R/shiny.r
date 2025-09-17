@@ -1,5 +1,5 @@
 # Keeps track of whether we've mounted the app's static assets
-.quartohelp_register_assets <- local({
+.register_assets <- local({
   added <- FALSE
   function() {
     if (added) {
@@ -22,7 +22,7 @@
 #' Internal UI for the Quarto Help app
 #' @noRd
 quartohelp_app_ui <- function() {
-  .quartohelp_register_assets()
+  .register_assets()
 
   bslib::page_fillable(
     title = "Quarto Help",

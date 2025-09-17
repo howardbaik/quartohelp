@@ -2,35 +2,35 @@
 % Please edit documentation in R/chat.r
 \name{ask}
 \alias{ask}
-\title{Launch the Quarto Help chat app}
+\title{Ask a single question with Quarto Help}
 \usage{
-ask(question = NULL, client = configure_chat(), interactive = TRUE)
+ask(question = NULL, client = quartohelp_chat(), interactive = TRUE)
 }
 \arguments{
 \item{question}{Optional character string to send as the first user turn.}
 
 \item{client}{An \code{ellmer::Chat} instance. Defaults to the value returned by
-\code{\link[=configure_chat]{configure_chat()}}.}
+\code{\link[=quartohelp_chat]{quartohelp_chat()}}.}
 
-\item{interactive}{If \code{TRUE} (default) launch the Shiny app. If \code{FALSE},
-the \code{question} (when supplied) is answered immediately and the response is
-returned.}
+\item{interactive}{When \code{FALSE}, return the result of \code{client$chat(question)}
+instead of launching the app. If \code{question} is \code{NULL}, the configured
+\code{client} is returned so you can continue the conversation manually.}
 }
 \value{
-Invisibly returns the \code{client} object. When \code{interactive = FALSE}
-the chat response is returned directly.
+When \code{interactive = TRUE}, invisibly returns the \code{client}. Otherwise
+returns the chat response or \code{client}.
 }
 \description{
-Starts an interactive chat interface backed by the Quarto knowledge store.
-The app uses \code{\link[shinychat:chat_app]{shinychat::chat_mod_ui()}} and \code{\link[shinychat:chat_app]{shinychat::chat_mod_server()}} to
-wire a single chat instance and an embedded documentation browser. By
-default a fresh chat is created with \code{\link[=configure_chat]{configure_chat()}}.
+Convenience wrapper that either launches \code{\link[=quartohelp_app]{quartohelp_app()}} (the default) or
+runs a single turn against the provided chat client when \code{interactive = FALSE}.
 }
 \examples{
+
 if (interactive() && nzchar(Sys.getenv("OPENAI_API_KEY"))) {
-  quartohelp::ask("How can I make a two column layout?")
+  # Launch the app
+  quartohelp::ask()
+
+  # Or answer a question programmatically
+  quartohelp::ask("How can I make a two column layout?", interactive = FALSE)
 }
-}
-\seealso{
-\code{\link[=configure_chat]{configure_chat()}}
 }

@@ -52,9 +52,21 @@ configure_chat <- function(
 
   ragnar::ragnar_register_tool_retrieve(chat, store, top_k = top_k)
 
-  attr(chat, "quartohelp_factory") <- function() {
+  attr(chat, "chat_factory") <- function() {
     configure_chat(top_k = top_k, store = store)
   }
 
   chat
+}
+
+#' Create a Quarto Help chat client
+#'
+#' This is a convenience wrapper around [configure_chat()] that returns a fresh
+#' `ellmer::Chat` instance configured with the Quarto knowledge store.
+#'
+#' @inheritParams configure_chat
+#' @return A configured `ellmer::Chat` object.
+#' @export
+chat_client <- function(top_k = 8, store = quartohelp_ragnar_store()) {
+  configure_chat(top_k = top_k, store = store)
 }

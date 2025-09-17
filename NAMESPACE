@@ -2,4 +2,6 @@
 
 export(ask)
 export(configure_chat)
+export(chat_client)
+export(launch_app)
 export(update_store)

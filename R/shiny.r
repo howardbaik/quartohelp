@@ -7,7 +7,10 @@
     }
     dir <- system.file("quartohelp-app", "www", package = "quartohelp")
     if (!nzchar(dir) || !dir.exists(dir)) {
-      warning("quartohelp assets directory not found; app resources may be missing.", call. = FALSE)
+      warning(
+        "quartohelp assets directory not found; app resources may be missing.",
+        call. = FALSE
+      )
       return(invisible(NULL))
     }
     shiny::addResourcePath("quartohelp", dir)
@@ -26,7 +29,11 @@ quartohelp_app_ui <- function() {
     theme = bslib::bs_theme(version = 5),
     shiny::tags$head(
       shiny::singleton(
-        shiny::tags$link(rel = "icon", type = "image/png", href = "quartohelp/favicon.png")
+        shiny::tags$link(
+          rel = "icon",
+          type = "image/png",
+          href = "quartohelp/favicon.png"
+        )
       ),
       shiny::singleton(
         shiny::tags$script(src = "quartohelp/quartohelp-app.js")
@@ -199,18 +206,25 @@ quartohelp_app_server <- function(
       shinychat::chat_mod_ui(paste0("chat_", chat_gen()), height = "100%")
     })
 
-    shiny::observeEvent(chat_gen(), {
-      module_id <- paste0("chat_", chat_gen())
-      module <- shinychat::chat_mod_server(module_id, chat())
+    shiny::observeEvent(
+      chat_gen(),
+      {
+        module_id <- paste0("chat_", chat_gen())
+        module <- shinychat::chat_mod_server(module_id, chat())
 
-      question <- pending_question()
-      if (!is.null(question)) {
-        pending_question(NULL)
-        session$onFlushed(function() {
-          module$update_user_input(value = question, submit = TRUE)
-        }, once = TRUE)
-      }
-    }, ignoreInit = FALSE)
+        question <- pending_question()
+        if (!is.null(question)) {
+          pending_question(NULL)
+          session$onFlushed(
+            function() {
+              module$update_user_input(value = question, submit = TRUE)
+            },
+            once = TRUE
+          )
+        }
+      },
+      ignoreInit = FALSE
+    )
 
     shiny::observeEvent(input$clear_chat, {
       chat(make_chat())

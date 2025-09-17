@@ -7,6 +7,12 @@ quartohelp_store_path <- store_path <- function() {
   quartohelp_cache_dir("quarto.ragnar.store")
 }
 
+#' Open the Quarto knowledge store
+#'
+#' Returns a `ragnar::RagnarStore` containing the Quarto documentation.
+#'
+#' @return A `RagnarStore` object.
+#' @keywords internal
 quartohelp_ragnar_store <- function() {
   path <- quartohelp_store_path()
   if (!file.exists(path)) {
@@ -63,4 +69,19 @@ quartohelp_store_url <- function() {
     release,
     commit_hash
   )
+}
+
+#' Serve the Quarto knowledge store via MCP
+#'
+#' This is a thin wrapper around [ragnar::mcp_serve_store()] that serves the
+#' bundled Quarto knowledge store connection.
+#'
+#' @param top_k Number of excerpts to return for each request. Passed to
+#'   [ragnar::mcp_serve_store()].
+#' @param ... Additional arguments forwarded to [ragnar::mcp_serve_store()],
+#'   such as `store_description`, `name`, or `extra_tools`.
+#' @return Nothing; called for its side effect.
+#' @export
+serve_store <- function(top_k = 8, ...) {
+  ragnar::mcp_serve_store(store = quartohelp_ragnar_store(), top_k = top_k, ...)
 }

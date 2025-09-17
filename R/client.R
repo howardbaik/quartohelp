@@ -8,7 +8,8 @@
 #' @param chat An `ellmer::Chat` object to configure.
 #' @param top_k Number of excerpts to request from the knowledge store for each
 #'   retrieval.
-#' @param store A connection returned by `quartohelp_ragnar_store()`.
+#' @param store A `ragnar::RagnarStore` object (for example, from
+#'   `quartohelp_ragnar_store()`).
 #'
 #' @return The configured `chat` object.
 #' @export

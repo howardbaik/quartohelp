@@ -17,7 +17,8 @@ configure_chat(
 \item{top_k}{Number of excerpts to request from the knowledge store for each
 retrieval.}
 
-\item{store}{A connection returned by \code{quartohelp_ragnar_store()}.}
+\item{store}{A \code{ragnar::RagnarStore} object (for example, from
+\code{quartohelp_ragnar_store()}).}
 }
 \value{
 The configured \code{chat} object.

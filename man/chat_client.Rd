@@ -10,7 +10,8 @@ chat_client(top_k = 8, store = quartohelp_ragnar_store())
 \item{top_k}{Number of excerpts to request from the knowledge store for each
 retrieval.}
 
-\item{store}{A connection returned by \code{quartohelp_ragnar_store()}.}
+\item{store}{A \code{ragnar::RagnarStore} object (for example, from
+\code{quartohelp_ragnar_store()}).}
 }
 \value{
 A configured \code{ellmer::Chat} object.

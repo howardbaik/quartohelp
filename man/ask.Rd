@@ -4,13 +4,13 @@
 \alias{ask}
 \title{Ask a single question with Quarto Help}
 \usage{
-ask(question = NULL, client = quartohelp_chat(), interactive = TRUE)
+ask(question = NULL, client = chat_client(), interactive = TRUE)
 }
 \arguments{
 \item{question}{Optional character string to send as the first user turn.}
 
 \item{client}{An \code{ellmer::Chat} instance. Defaults to the value returned by
-\code{\link[=quartohelp_chat]{quartohelp_chat()}}.}
+\code{\link[=chat_client]{chat_client()}}.}
 
 \item{interactive}{When \code{FALSE}, return the result of \code{client$chat(question)}
 instead of launching the app. If \code{question} is \code{NULL}, the configured
@@ -21,7 +21,7 @@ When \code{interactive = TRUE}, invisibly returns the \code{client}. Otherwise
 returns the chat response or \code{client}.
 }
 \description{
-Convenience wrapper that either launches \code{\link[=quartohelp_app]{quartohelp_app()}} (the default) or
+Convenience wrapper that either launches \code{\link[=launch_app]{launch_app()}} (the default) or
 runs a single turn against the provided chat client when \code{interactive = FALSE}.
 }
 \examples{

@@ -30,6 +30,12 @@ ask <- function(
   }
 
   rlang:::check_string(question, allow_null = TRUE)
+  if (!is.null(question)) {
+    question <- trimws(question)
+    if (!nzchar(question)) {
+      question <- NULL
+    }
+  }
 
   if (!interactive) {
     if (is.null(question)) {
@@ -44,15 +50,13 @@ ask <- function(
   }
 
   initial_chat <- client
-  if (!is.null(question) && length(initial_chat$get_turns()) == 0) {
-    initial_chat$chat(question)
-  }
 
   app <- shiny::shinyApp(
     ui = quartohelp_app_ui(),
     server = quartohelp_app_server(
       initial_chat = initial_chat,
-      chat_factory = factory
+      chat_factory = factory,
+      initial_question = question
     )
   )
 

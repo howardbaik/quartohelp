@@ -349,12 +349,17 @@ quartohelp_app_ui <- function() {
 
 #' Internal server for the Quarto Help app
 #' @noRd
-quartohelp_app_server <- function(initial_chat = NULL, chat_factory = configure_chat) {
+quartohelp_app_server <- function(
+  initial_chat = NULL,
+  chat_factory = configure_chat,
+  initial_question = NULL
+) {
   force(chat_factory)
 
   function(input, output, session) {
     first <- TRUE
     initial <- initial_chat
+    pending_question <- shiny::reactiveVal(initial_question)
 
     make_chat <- function() {
       if (first) {
@@ -376,7 +381,16 @@ quartohelp_app_server <- function(initial_chat = NULL, chat_factory = configure_
     })
 
     shiny::observeEvent(chat_gen(), {
-      shinychat::chat_mod_server(paste0("chat_", chat_gen()), chat())
+      module_id <- paste0("chat_", chat_gen())
+      module <- shinychat::chat_mod_server(module_id, chat())
+
+      question <- pending_question()
+      if (!is.null(question)) {
+        pending_question(NULL)
+        session$onFlushed(function() {
+          module$update_user_input(value = question, submit = TRUE)
+        }, once = TRUE)
+      }
     }, ignoreInit = FALSE)
 
     shiny::observeEvent(input$clear_chat, {

@@ -139,6 +139,7 @@ quartohelp_app_ui <- function() {
           r"---(
           window.IFR_HISTORY = [];
           window.IFR_INDEX = -1;
+          window.shinychat_always_open_external_links = true;
 
           function updateNavButtons(){
             var back = document.getElementById('iframe-back');

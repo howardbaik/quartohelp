@@ -1,14 +1,37 @@
+# Keeps track of whether we've mounted the app's static assets
+.quartohelp_register_assets <- local({
+  added <- FALSE
+  function() {
+    if (added) {
+      return(invisible(NULL))
+    }
+    dir <- system.file("quartohelp-app", "www", package = "quartohelp")
+    if (!nzchar(dir) || !dir.exists(dir)) {
+      warning("quartohelp assets directory not found; app resources may be missing.", call. = FALSE)
+      return(invisible(NULL))
+    }
+    shiny::addResourcePath("quartohelp", dir)
+    added <<- TRUE
+    invisible(NULL)
+  }
+})
+
 #' Internal UI for the Quarto Help app
 #' @noRd
 quartohelp_app_ui <- function() {
-  script_path <- system.file("quartohelp-app", "www", "quartohelp-app.js", package = "quartohelp")
-  if (!nzchar(script_path) || !file.exists(script_path)) {
-    stop("Could not locate quartohelp-app.js in package resources.", call. = FALSE)
-  }
+  .quartohelp_register_assets()
 
   bslib::page_fillable(
     title = "Quarto Help",
     theme = bslib::bs_theme(version = 5),
+    shiny::tags$head(
+      shiny::singleton(
+        shiny::tags$link(rel = "icon", type = "image/png", href = "quartohelp/favicon.png")
+      ),
+      shiny::singleton(
+        shiny::tags$script(src = "quartohelp/quartohelp-app.js")
+      )
+    ),
     shiny::tagList(
       shiny::tags$style(
         shiny::HTML(
@@ -138,8 +161,7 @@ quartohelp_app_ui <- function() {
             )
           )
         )
-      ),
-      shiny::includeScript(script_path)
+      )
     )
   )
 }

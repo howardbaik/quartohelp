@@ -28,8 +28,8 @@ app_ui <- function() {
         "
         html, body, .bslib-page { height: 100%; }
         body, .bslib-page { margin: 0; }
-        .bslib-page .main, [data-bslib-main] { padding: 0; }
-        .content-split { display: flex; gap: 0; height: 100vh; position: relative; }
+        .bslib-page .main, [data-bslib-main] { padding: 1rem; }
+        .content-split { display: flex; gap: 0; height: calc(100vh - 2rem); position: relative; }
         .left-pane { flex: 0 0 var(--left-pane-width, 40%); min-width: 240px; max-width: 80%; display: flex; flex-direction: column; }
         .right-pane { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 20%; }
         .left-pane, .right-pane { min-height: 0; }

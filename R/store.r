@@ -21,9 +21,9 @@ quartohelp_ragnar_store <- function() {
 #' quartohelp GitHub repository.
 #'
 #' The download location can be configured with a few environment variables:
-#' - `QUARTOHELP_STORE_URL`: a custom URL to download the store from. The default is to downlaod the latest store
-#' from the `t-kalinowski/quartohelp` repository in the `store` release.
-#' - `QUARTOHELP_STORE_RELEASE`: the release tag to download the store from. Defaults to `store`.
+#' - `QUARTOHELP_STORE_URL`: a custom URL to download the store from. The default is to download the latest store
+#' from the `t-kalinowski/quartohelp` repository in the `store-v2` release.
+#' - `QUARTOHELP_STORE_RELEASE`: the release tag to download the store from. Defaults to `store-v2`.
 #' - `QUARTOHELP_STORE_REPOSITORY`: the repository to download the store from. Defaults to `t-kalinowski/quartohelp`.
 #'
 #' @return `NULL` invisibly.
@@ -33,7 +33,7 @@ update_store <- function() {
   fs::dir_create(dirname(path))
 
   tmp <- withr::local_tempfile()
-  download.file(quartohelp_store_url(), destfile = tmp)
+  download.file(quartohelp_store_url(), destfile = tmp, mode = "wb")
 
   file.rename(tmp, path)
   invisible(NULL)
@@ -58,7 +58,8 @@ quartohelp_store_url <- function() {
     n = 1L
   )
   sprintf(
-    "https://github.com/t-kalinowski/quartohelp/releases/download/%s/quarto.ragnar.store-%s",
+    "https://github.com/%s/releases/download/%s/quarto.ragnar.store-%s",
+    repository,
     release,
     commit_hash
   )

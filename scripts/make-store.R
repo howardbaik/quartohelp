@@ -20,8 +20,6 @@ if (!dir.exists("~/github/quarto-dev/quarto-web/_site/")) {
   })
 }
 
-# debugonce(ragnar_find_links)
-
 urls <- ragnar_find_links("~/github/quarto-dev/quarto-web/_site/sitemap.xml")
 local_paths <- str_replace(
   urls,
@@ -50,8 +48,7 @@ for (r in seq_len(nrow(sitemap))) {
   .[local_path = local_path, url = url, ..] <- sitemap[r, ]
   message(sprintf("[% 3i/%i] ingesting: %s", r, nrow(sitemap), url))
 
-  doc <- read_as_markdown(local_path)
-  doc@origin <- url
+  doc <- read_as_markdown(local_path, origin = url)
   chunks <- markdown_chunk(doc)
 
   ragnar_store_insert(store, chunks)

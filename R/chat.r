@@ -62,6 +62,97 @@ launch_app <- function(
   invisible(initial_chat)
 }
 
+#' Launch a simple Quarto Help chat app
+#'
+#' Provides a bare-bones Shiny example that wires [configure_chat()] into the
+#' [`shinychat`](https://rstudio.github.io/shinychat/) UI module. The app mirrors
+#' just the chat pane from [launch_app()] without the documentation browser or
+#' any advanced controls.
+#'
+#' @param question Optional character string to send as the first user turn.
+#'
+#' @return Invisibly returns `NULL`.
+#' @export
+#' @examples
+#' if (interactive() && nzchar(Sys.getenv("OPENAI_API_KEY"))) {
+#'   quartohelp::launch_app_simple()
+#' }
+launch_app_simple <- function(
+  question = NULL
+) {
+  .require_api_key()
+  question <- .normalize_question(question)
+
+  ui <- bslib::page_fillable(
+    title = "Quarto Help (Simple Chat)",
+    theme = bslib::bs_theme(version = 5),
+    bslib::card(
+      fill = TRUE,
+      bslib::card_header(
+        shiny::div(
+          class = "d-flex align-items-center justify-content-between gap-2",
+          shiny::tags$span("Chat"),
+          shiny::actionButton(
+            inputId = "clear_chat",
+            label = "Clear",
+            icon = shiny::icon("broom"),
+            class = "btn btn-sm btn-outline-secondary"
+          )
+        )
+      ),
+      bslib::card_body(
+        fill = TRUE,
+        shiny::div(
+          class = "h-100",
+          shiny::uiOutput("chat_panel")
+        )
+      )
+    )
+  )
+
+  server <- function(input, output, session) {
+    make_chat <- function() {
+      configure_chat()
+    }
+
+    chat <- shiny::reactiveVal(make_chat())
+    chat_gen <- shiny::reactiveVal(1L)
+    pending_question <- shiny::reactiveVal(question)
+
+    output$chat_panel <- shiny::renderUI({
+      shinychat::chat_mod_ui(paste0("chat_", chat_gen()), height = "100%")
+    })
+
+    shiny::observeEvent(
+      chat_gen(),
+      {
+        module_id <- paste0("chat_", chat_gen())
+        module <- shinychat::chat_mod_server(module_id, chat())
+
+        question <- pending_question()
+        if (!is.null(question)) {
+          pending_question(NULL)
+          session$onFlushed(
+            function() {
+              module$update_user_input(value = question, submit = TRUE)
+            },
+            once = TRUE
+          )
+        }
+      },
+      ignoreInit = FALSE
+    )
+
+    shiny::observeEvent(input$clear_chat, {
+      chat(make_chat())
+      chat_gen(shiny::isolate(chat_gen()) + 1L)
+    })
+  }
+
+  shiny::runApp(shiny::shinyApp(ui = ui, server = server))
+  invisible(NULL)
+}
+
 #' Ask a single question with Quarto Help
 #'
 #' Convenience wrapper that either launches [launch_app()] (the default) or

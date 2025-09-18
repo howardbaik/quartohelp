@@ -5,8 +5,8 @@
 \title{Configure the default chat client}
 \usage{
 configure_chat(
-  chat = ellmer::chat_openai(model = "gpt-5-nano", params =
-    ellmer::params(reasoning_effort = "low", verbosity = "low"), echo = FALSE),
+  chat = ellmer::chat_openai(model = "gpt-5", params = ellmer::params(reasoning_effort =
+    "low", verbosity = "low"), echo = FALSE),
   top_k = 8,
   store = quartohelp_ragnar_store()
 )

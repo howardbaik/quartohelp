@@ -15,7 +15,7 @@
 #' @export
 configure_chat <- function(
   chat = ellmer::chat_openai(
-    model = "gpt-5-nano",
+    model = "gpt-5",
     params = ellmer::params(reasoning_effort = "low", verbosity = "low"),
     echo = FALSE
   ),

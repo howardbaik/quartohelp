@@ -10,8 +10,8 @@ update_store()
 \code{NULL} invisibly.
 }
 \description{
-It always downloads the latest version of the store from the
-quartohelp GitHub repository.
+Downloads the latest version of the store from the quartohelp GitHub
+repository and builds the search index locally.
 }
 \details{
 The download location can be configured with a few environment variables:

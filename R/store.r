@@ -23,8 +23,8 @@ quartohelp_ragnar_store <- function() {
 
 #' Updates the Quarto knowledge store
 #'
-#' It always downloads the latest version of the store from the
-#' quartohelp GitHub repository.
+#' Downloads the latest version of the store from the quartohelp GitHub
+#' repository and builds the search index locally.
 #'
 #' The download location can be configured with a few environment variables:
 #' - `QUARTOHELP_STORE_URL`: a custom URL to download the store from. The default is to download the latest store
@@ -42,6 +42,10 @@ update_store <- function() {
   download.file(quartohelp_store_url(), destfile = tmp, mode = "wb")
 
   fs::file_move(tmp, path)
+
+  store <- ragnar::ragnar_store_connect(path, read_only = FALSE)
+  on.exit(DBI::dbDisconnect(store@con), add = TRUE)
+  ragnar::ragnar_store_build_index(store)
   invisible(NULL)
 }
 

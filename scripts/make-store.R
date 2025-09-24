@@ -54,8 +54,6 @@ for (r in seq_len(nrow(sitemap))) {
   ragnar_store_insert(store, chunks)
 }
 
-ragnar_store_build_index(store)
-
 DBI::dbDisconnect(store@con)
 
 if (require("quartohelp")) {

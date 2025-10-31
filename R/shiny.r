@@ -97,7 +97,7 @@ quartohelp_app_ui <- function() {
             bslib::card_body(
               shiny::div(
                 id = "chat-pane",
-                shiny::uiOutput("chat_panel")
+                shinychat::chat_mod_ui("chat_panel", height = "100%")
               )
             )
           )
@@ -185,8 +185,7 @@ quartohelp_app_server <- function(
   function(input, output, session) {
     first <- TRUE
     initial <- initial_chat
-    pending_question <- shiny::reactiveVal(initial_question)
-
+    
     make_chat <- function() {
       if (first) {
         first <<- FALSE
@@ -199,36 +198,18 @@ quartohelp_app_server <- function(
       chat_factory()
     }
 
-    chat <- shiny::reactiveVal(make_chat())
-    chat_gen <- shiny::reactiveVal(1L)
+    chat <- make_chat()
+    chat_module <- shinychat::chat_mod_server("chat_panel", chat)
 
-    output$chat_panel <- shiny::renderUI({
-      shinychat::chat_mod_ui(paste0("chat_", chat_gen()), height = "100%")
-    })
-
-    shiny::observeEvent(
-      chat_gen(),
-      {
-        module_id <- paste0("chat_", chat_gen())
-        module <- shinychat::chat_mod_server(module_id, chat())
-
-        question <- pending_question()
-        if (!is.null(question)) {
-          pending_question(NULL)
-          session$onFlushed(
-            function() {
-              module$update_user_input(value = question, submit = TRUE)
-            },
-            once = TRUE
-          )
-        }
+    session$onFlushed(
+      function() {
+        chat_module$update_user_input(value = initial_question, submit = TRUE)
       },
-      ignoreInit = FALSE
+      once = TRUE
     )
 
     shiny::observeEvent(input$clear_chat, {
-      chat(make_chat())
-      chat_gen(shiny::isolate(chat_gen()) + 1L)
+      chat_module$clear()
     })
   }
 }

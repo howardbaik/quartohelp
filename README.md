@@ -13,6 +13,12 @@ summarizes excerpts from Quarto docs using semantic and keyword search
 (via [ragnar](https://github.com/tidyverse/ragnar)). Responses include
 links to official sources to help you quickly navigate to the primary Quarto documentation.
 
+## Note on OpenAI Organization Verification
+
+If you plan to use models that require organization verification (such as GPT-5), you'll need to complete OpenAI's "Verify Organization" process before these models become accessible through this package. After submitting your verification request at https://platform.openai.com/settings/organization/general, access typically propagates within 15 minutes. Until verification is complete, attempting to use these models will result in an HTTP 400 error with a message directing you to verify your organization.
+
+Alternatively, you can use GPT-4.1, which works well for this package and does not require organization verification.
+
 ## Screenshot
 
 ![Screenshot of quartohelp app](man/figures/app-screenshot.png)
